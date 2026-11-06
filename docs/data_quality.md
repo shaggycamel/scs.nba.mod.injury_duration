@@ -5,10 +5,11 @@ Written as a handover. Everything below was found while building
 snapshot, produced by `data/gen.py` in `scs.nba.mod.scratch` from the `nba`
 schema on CockroachDB.
 
-**Partly fixed at source (2026-11-07).** A1, A3, B2 and D1 were corrected in
-the `nba` tables in both Postgres and CockroachDB; the code workarounds remain
-and are now no-ops. Everything else is still worked around in code. The two
-exceptions marked **NOT HANDLED** are known residual defects.
+**Partly fixed at source (2026-11-07).** A1, A3, A5, A6, B2 and D1 were
+corrected in the `nba` tables in both Postgres and CockroachDB; the code
+workarounds remain and are now no-ops. A2 is partly fixed: the accent-spelled
+crosswalk names now resolve, leaving 7 rows across 3 names. Everything else is
+still worked around in code.
 
 To see the current state of every item:
 
@@ -25,14 +26,14 @@ upstream change; the counts below are its output as of 2026-11-07.
 
 | # | Defect | Rows | Severity | Handled |
 |---|---|---|---|---|
-| A5 | 35 injury rows dated on the schedule's wrong clock | 35 | low | **NOT HANDLED** |
-| A6 | 17 injury rows 21 days from their own `game_id` | 17 | low | **NOT HANDLED** |
+| A5 | 35 injury rows dated on the schedule's wrong clock | 0 | low | **fixed at source** |
+| A6 | 17 injury rows 21 days from their own `game_id` | 0 | low | **fixed at source** |
 | B2 | 2021-22 schedule dates are one day early | whole season | **critical** | **fixed at source** |
 | C1 | Box score omits absent players entirely | — | **critical** | `spells.py` |
-| A2 | `nba_id` null on 18.3% of injury rows | 11,546 | high | `ids.py` |
-| A1 | Exact duplicate injury rows from 2026-02-20 | 1,406 | high | **fixed at source** |
+| A2 | `nba_id` null on 18.1% of injury rows | 11,408 | high | `ids.py` |
+| A1 | Exact duplicate injury rows from 2026-02-20 | 0 | high | **fixed at source** |
 | A7 | `reason` is free text, 2,858 distinct strings | all | high | `taxonomy.py` + `nba.injury_reason_map` |
-| A4 | `game_id` null on 19.2% of injury rows | 12,059 | medium | `spells.py` |
+| A4 | `game_id` null on 19.1% of injury rows | 12,042 | medium | `spells.py` |
 | A3 | Concatenated `status` values | 0 | low | **fixed at source** |
 | B1 | Non-NBA teams in the schedule | 736 | medium | `calendar.py` |
 | C2 | `min` null for DNP rows | 105,323 | low | `spells.py` |
@@ -68,7 +69,7 @@ inflates every per-game aggregate and double-counts spells.
 **Handled in:** `spells.load_report()` — `.unique()` before anything else
 (now a no-op; the source is clean).
 
-### A2. `nba_id` is null on 18.3% of rows — 11,546 rows
+### A2. `nba_id` is null on 18.1% of rows — 11,408 rows
 
 Null rate varies by season, from 2% in 2024-25 to 38% in 2021-22, so a naive
 `drop_nulls` would silently delete a third of the earliest season.
@@ -86,14 +87,17 @@ Worse, some `player_name` values are **two players' names interleaved**:
 the box score, then a punctuation- and suffix-stripped form of each. Names
 that map to more than one id are dropped from the lookup rather than guessed.
 
-**Residual:** 137 rows across 7 names survive all four steps and are
-dropped. Those are genuine players missing from the crosswalk (`Nikola
-Djurisic`, `Kasparas Jakucionis`, `Yanic Konan Niederhauser`, `Boban
-Marjanovic`, `Kyle Mangas`, `Jeenathan Williams`, `David Jones`), not the
-interleaved names; adding them to `util.player_source_id` would recover them.
+**Residual:** 7 rows across 3 names survive all four steps and are dropped:
+`Kyle Mangas` (5, G League), `Jeenathan Williams` (1, roster) and `David Jones`
+(1, G League). The first two have no NBA id in any local source; David Jones is
+the shortened form of "David Jones Garcia" and would need an alias. None of the
+three starts an injury spell.
 
-The 25 interleaved/doubled report rows were re-ingested from the archived PDFs
-on 2026-11-07 and are gone.
+**At source 2026-11-07:** the accent-spelled players now resolve. The report
+writes ASCII ("Nikola Djurisic") while the crosswalk keeps "Nikola Đurišić";
+`get_team_injuries` folds both sides, and 130 existing rows were backfilled with
+their `nba_id`. The 25 interleaved/doubled report rows were re-ingested from the
+archived PDFs and are gone.
 
 ### A3. Concatenated `status` values — 21 rows
 
@@ -112,7 +116,7 @@ same rows as A2: a merged row can have a clean name and a doubled status.
 **Handled in:** `spells.load_report()` takes the first whitespace token.
 Defensible because the first token is the one belonging to the named player.
 
-### A4. `game_id` is null on 19.2% of rows — 12,059 rows
+### A4. `game_id` is null on 19.1% of rows — 12,042 rows
 
 Nearly all of 2021-22. **This one is a trap**: the column has the same name
 as `league_game_schedule.game_id`, so a naive join silently keeps the
@@ -124,45 +128,32 @@ exactly this reason.
 `(team_slug, report_date)` instead, which is unique because no team plays
 twice in a day.
 
-### A5. 35 rows dated on the schedule's wrong clock — **NOT HANDLED**
+### A5. 35 rows dated on the schedule's wrong clock
 
-Four 2021-22 games are filed one day early, the same off-by-one that B2
-described before the schedule was corrected. They are precisely the 2021-22
-rows that carry a non-null `game_id`, so they evidently came from whatever
-back-fill populated that column.
+**Fixed at source 2026-11-07:** all 35 rows were re-dated from their
+`report_game_id` to the schedule's `game_date`; the 9 duplicate HOU@POR rows
+that already sat on the correct date were removed. `scripts/10` reports 0.
 
-The giveaway is that one game appears twice, under both dates:
+Background: four 2021-22 games were filed one day early — the same off-by-one
+that B2 described before the schedule was corrected — and they were precisely
+the 2021-22 rows carrying a non-null `game_id`. The giveaway was HOU@POR
+appearing under both dates:
 
 ```
 HOU@POR  2022-03-25: 11 rows, all 11 carrying a game_id   <- wrong clock
-         2022-03-26:  9 rows, none carrying a game_id     <- correct
+         2022-03-26:  9 rows, none carrying a game_id     <- correct, subset
 ```
 
 The other three (NOP@UTA 2021-11-26, MIN@SAC 2022-02-08, TOR@BKN 2022-02-28)
-appear *only* on the wrong date.
+appeared only on the wrong date. The code-side alternative — preferring
+`report_game_id` in `spells.build_panel()` — is still a good defensive change
+but is no longer needed for these rows.
 
-**Impact:** `calendar.py` previously applied a uniform +1 day correction for
-2021-22. The schedule is now correct at source, so the measured offset is 0 —
-but these rows are still one day early and therefore land on the *previous*
-game. All 35 map to the wrong game; none map correctly. That can create a
-spurious one-game absence or stretch a spell by a game for a handful of
-2021-22 players. It is 0.056% of the file and does not move any published
-figure.
+### A6. 17 rows 21 days away from their own `game_id`
 
-**The fix, if you want it:** prefer the row's own `report_game_id` when it is
-non-null and fall back to the `(team_slug, report_date)` join only when it is
-null. That is strictly better than the current code for every season, not
-just 2021-22. It is roughly fifteen lines in `spells.build_panel()`, but it
-changes the spell boundaries slightly, so it needs a full pipeline re-run and
-a re-sync of both reports (`scripts/09_sync_report_numbers.py`).
-
-### A6. 17 rows 21 days away from their own `game_id` — **NOT HANDLED**
-
-One game, `22500529` (MIA@CHI), filed under 2026-01-08 while the schedule has
-it on 2026-01-29. Almost certainly a postponed game where the report kept the
-original date. Harmless here because the date-based join sends those rows to
-whatever game actually happened on 2026-01-08, but flag it if you start
-trusting `game_id`.
+**Fixed at source 2026-11-07:** the 17 stale rows for the postponed MIA@CHI
+game (`22500529`) on 2026-01-08 were deleted; the 23 rows from the game's
+actual report on 2026-01-29 remain. `scripts/10` reports 0.
 
 ### A7. `reason` is unvalidated free text
 
@@ -191,8 +182,9 @@ body region and 2.7% an unknown ailment.
 
 **At source (2026-11-07):** `nba.injury_reason_map` holds the parsed form of
 every distinct reason and `nba.injuries_parsed` joins it to the report, so
-consumers can select structured columns without re-parsing. Regenerate the map
-when new reason strings arrive.
+consumers can select structured columns without re-parsing. Refresh it with
+`uv run --group data python scripts/11_refresh_reason_map.py`; pass
+`--db-con postgres` for the local copy.
 
 **One ordering trap worth knowing:** the literal prefix `"Injury/Illness"`
 contains the word *illness*, so a rule list that tests for illness before
