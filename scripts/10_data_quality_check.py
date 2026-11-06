@@ -153,10 +153,14 @@ def main() -> int:
     print("D. other tables")
     print("=" * 78)
     pi = pl.read_parquet(paths.PLAYER_INFO)
-    report("D1 player_info season coverage",
-           f"only {sorted(pi['season'].unique().to_list())}", len(pi["season"].unique()))
-    bad_bd = pi.filter(pl.col("birthdate").str.contains("T"))
-    report("D1 birthdate is a string", 'carries a "T00:00:00" suffix', bad_bd.height)
+    expected = set(paths.SEASONS)
+    missing = sorted(expected - set(pi["season"].unique().to_list()))
+    report("D1 player_info season coverage", f"missing {missing} seasons", len(missing))
+    if pi.schema["birthdate"] == pl.Date:
+        bad_bd = 0
+    else:
+        bad_bd = pi.filter(pl.col("birthdate").cast(pl.String).str.contains("T")).height
+    report("D1 birthdate is a string", 'carries a "T00:00:00" suffix', bad_bd)
     pss = pl.read_parquet(paths.NBA / "player_season_stats.parquet")
     floaty = pss.filter(pl.col("player_id").str.contains(r"\."))
     report("D2 player_season_stats ids", 'string ids written as floats, e.g. "1641645.0"',

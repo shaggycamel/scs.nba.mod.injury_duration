@@ -5,11 +5,10 @@ Written as a handover. Everything below was found while building
 snapshot, produced by `data/gen.py` in `scs.nba.mod.scratch` from the `nba`
 schema on CockroachDB.
 
-**Nothing here has been fixed at source.** Every item is worked around in
-code, in the module named under *Handled in*. If you fix one upstream, the
-workaround becomes a no-op rather than a conflict — none of them rewrite
-values, they only drop, re-key or re-date rows. The two exceptions marked
-**NOT HANDLED** are known residual defects.
+**Partly fixed at source (2026-11-07).** A1, A3, B2 and D1 were corrected in
+the `nba` tables in both Postgres and CockroachDB; the code workarounds remain
+and are now no-ops. Everything else is still worked around in code. The two
+exceptions marked **NOT HANDLED** are known residual defects.
 
 To see the current state of every item:
 
@@ -18,7 +17,7 @@ uv run python scripts/10_data_quality_check.py
 ```
 
 That script is the executable version of this document. Re-run it after any
-upstream change; the counts below are its output as of 2026-10-11.
+upstream change; the counts below are its output as of 2026-11-07.
 
 ---
 
@@ -28,16 +27,16 @@ upstream change; the counts below are its output as of 2026-10-11.
 |---|---|---|---|---|
 | A5 | 35 injury rows dated on the schedule's wrong clock | 35 | low | **NOT HANDLED** |
 | A6 | 17 injury rows 21 days from their own `game_id` | 17 | low | **NOT HANDLED** |
-| B2 | 2021-22 schedule dates are one day early | whole season | **critical** | `calendar.py` |
+| B2 | 2021-22 schedule dates are one day early | whole season | **critical** | **fixed at source** |
 | C1 | Box score omits absent players entirely | — | **critical** | `spells.py` |
-| A2 | `nba_id` null on 18.5% of injury rows | 11,633 | high | `ids.py` |
-| A1 | Exact duplicate injury rows from 2026-02-20 | 1,406 | high | `spells.py` |
-| A7 | `reason` is free text, 2,914 distinct strings | all | high | `taxonomy.py` |
+| A2 | `nba_id` null on 18.3% of injury rows | 11,546 | high | `ids.py` |
+| A1 | Exact duplicate injury rows from 2026-02-20 | 1,406 | high | **fixed at source** |
+| A7 | `reason` is free text, 2,858 distinct strings | all | high | `taxonomy.py` + `nba.injury_reason_map` |
 | A4 | `game_id` null on 19.2% of injury rows | 12,059 | medium | `spells.py` |
-| A3 | Concatenated `status` values | 21 | low | `spells.py` |
+| A3 | Concatenated `status` values | 0 | low | **fixed at source** |
 | B1 | Non-NBA teams in the schedule | 736 | medium | `calendar.py` |
-| C2 | `min` null for DNP rows | 105,394 | low | `spells.py` |
-| D1 | `player_info` covers two seasons; string birthdate | — | medium | `features.py` |
+| C2 | `min` null for DNP rows | 105,323 | low | `spells.py` |
+| D1 | `player_info` covered two seasons; string birthdate | — | medium | **fixed at source** |
 | D2 | `player_season_stats.player_id` is a float-string | 5,039 | low | avoided |
 
 ---
@@ -45,6 +44,10 @@ upstream change; the counts below are its output as of 2026-10-11.
 ## A. `nba.injuries`
 
 ### A1. Exact duplicate rows from 2026-02-20 onwards — 1,406 rows
+
+**Fixed at source 2026-11-07:** 1,406 duplicates were deleted from both
+Postgres and CockroachDB, and `get_team_injuries()` now deduplicates its frame
+before writing. The code workaround remains as a guard.
 
 Every row filed on or after 2026-02-20 appears two to six times, byte for
 byte. 478 (team, date, player) keys are affected.
@@ -62,9 +65,10 @@ write mode around that date.
 **Impact if ignored:** a player's absence is counted up to six times, which
 inflates every per-game aggregate and double-counts spells.
 
-**Handled in:** `spells.load_report()` — `.unique()` before anything else.
+**Handled in:** `spells.load_report()` — `.unique()` before anything else
+(now a no-op; the source is clean).
 
-### A2. `nba_id` is null on 18.5% of rows — 11,633 rows
+### A2. `nba_id` is null on 18.3% of rows — 11,546 rows
 
 Null rate varies by season, from 2% in 2024-25 to 38% in 2021-22, so a naive
 `drop_nulls` would silently delete a third of the earliest season.
@@ -82,11 +86,21 @@ Worse, some `player_name` values are **two players' names interleaved**:
 the box score, then a punctuation- and suffix-stripped form of each. Names
 that map to more than one id are dropped from the lookup rather than guessed.
 
-**Residual:** 158 rows across 25 names survive all four steps and are
-dropped. Almost all are the interleaved names above; a scraper fix upstream
-would recover them. 0.25% of the file.
+**Residual:** 137 rows across 7 names survive all four steps and are
+dropped. Those are genuine players missing from the crosswalk (`Nikola
+Djurisic`, `Kasparas Jakucionis`, `Yanic Konan Niederhauser`, `Boban
+Marjanovic`, `Kyle Mangas`, `Jeenathan Williams`, `David Jones`), not the
+interleaved names; adding them to `util.player_source_id` would recover them.
+
+The 25 interleaved/doubled report rows were re-ingested from the archived PDFs
+on 2026-11-07 and are gone.
 
 ### A3. Concatenated `status` values — 21 rows
+
+**Fixed at source 2026-11-07:** the merged rows were re-ingested from the
+archived reports (2026-01-27..31) and are gone; `get_team_injuries()` now
+deduplicates its frame. The parser still takes the first whitespace token as a
+guard.
 
 ```
 "Out Out", "Out Out Out", "Questionable Doubtful Out", "Available Out Out"
@@ -112,10 +126,10 @@ twice in a day.
 
 ### A5. 35 rows dated on the schedule's wrong clock — **NOT HANDLED**
 
-Four 2021-22 games are filed under the date that `league_game_schedule` uses
-(see B2) rather than the true date. They are precisely the 2021-22 rows that
-carry a non-null `game_id`, so they evidently came from whatever back-fill
-populated that column.
+Four 2021-22 games are filed one day early, the same off-by-one that B2
+described before the schedule was corrected. They are precisely the 2021-22
+rows that carry a non-null `game_id`, so they evidently came from whatever
+back-fill populated that column.
 
 The giveaway is that one game appears twice, under both dates:
 
@@ -127,11 +141,13 @@ HOU@POR  2022-03-25: 11 rows, all 11 carrying a game_id   <- wrong clock
 The other three (NOP@UTA 2021-11-26, MIN@SAC 2022-02-08, TOR@BKN 2022-02-28)
 appear *only* on the wrong date.
 
-**Impact:** `calendar.py` applies a uniform +1 day correction for 2021-22, so
-these rows — already on the shifted clock — land on the *previous* game. All
-35 map to the wrong game; none map correctly. That can create a spurious
-one-game absence or stretch a spell by a game for a handful of 2021-22
-players. It is 0.056% of the file and does not move any published figure.
+**Impact:** `calendar.py` previously applied a uniform +1 day correction for
+2021-22. The schedule is now correct at source, so the measured offset is 0 —
+but these rows are still one day early and therefore land on the *previous*
+game. All 35 map to the wrong game; none map correctly. That can create a
+spurious one-game absence or stretch a spell by a game for a handful of
+2021-22 players. It is 0.056% of the file and does not move any published
+figure.
 
 **The fix, if you want it:** prefer the row's own `report_game_id` when it is
 non-null and fall back to the `(team_slug, report_date)` join only when it is
@@ -150,7 +166,7 @@ trusting `game_id`.
 
 ### A7. `reason` is unvalidated free text
 
-2,914 distinct strings for what is really a few dozen clinical categories.
+2,858 distinct strings for what is really a few dozen clinical categories.
 The intended shape is
 
 ```
@@ -159,7 +175,7 @@ Injury/Illness - <Side> <Body part>; <Ailment>
 
 but in practice:
 
-* **925 rows** are blank — `null` or a bare `"-"`.
+* **926 rows** are blank — `null` or a bare `"-"`.
 * **6 rows** have the team name glued to the front:
   `"Portland Trail Blazers Injury/Illness - Abdomen; Tendinopathy"`.
 * Casing is inconsistent for the same concept: `Injury Recovery` /
@@ -172,6 +188,11 @@ but in practice:
 `body_region`, `body_side`, `ailment_class` and a set of severity flags, with
 ordered keyword rules. After parsing, 1.2% of injury rows have an unknown
 body region and 2.7% an unknown ailment.
+
+**At source (2026-11-07):** `nba.injury_reason_map` holds the parsed form of
+every distinct reason and `nba.injuries_parsed` joins it to the report, so
+consumers can select structured columns without re-parsing. Regenerate the map
+when new reason strings arrive.
 
 **One ordering trap worth knowing:** the literal prefix `"Injury/Illness"`
 contains the word *illness*, so a rule list that tests for illness before
@@ -193,7 +214,11 @@ from `nba.teams` and drops `season_type == "Pre Season"`.
 
 ### B2. 2021-22 dates are one day early — whole season, **critical**
 
-This is the big one. Every 2021-22 row in `league_game_schedule` is dated one
+**Fixed at source 2026-11-07:** every 2021-22 row in `league_game_schedule`
+was shifted forward one day in both Postgres and CockroachDB. The measured
+offset is now 0 for every season.
+
+This was the big one. Every 2021-22 row in `league_game_schedule` was dated one
 day before the game actually happened. Later seasons are correct.
 
 Three independent confirmations:
@@ -227,11 +252,11 @@ offsets of −1, 0 and +1 by how many `(team, date)` pairs align between the
 report and the schedule, and takes the best. Current output:
 
 ```
-2021-22: offset +1  matches 2476/2634   (0: 414, -1: 1533)
+2021-22: offset +0  matches 2476/2634   (alternatives {-1: 414, 1: 322})
 2022-23: offset +0  matches 2465/2628
 2023-24: offset +0  matches 2457/2624
 2024-25: offset +0  matches 2447/2628
-2025-26: offset +0  matches 2529/2630
+2025-26: offset +0  matches 2535/2630
 ```
 
 The separation is wide enough that this is not a coin flip. The corrected
@@ -239,8 +264,10 @@ date lands in a **new** column, `report_date`; `game_date` is left untouched,
 because a constant per-season offset cancels in any within-season difference
 and only matters for joining.
 
-**If you fix this upstream**, the measured offset becomes 0 and the code keeps
-working with no change.
+**Because this was fixed at source**, the measured offset is 0 and the code
+keeps working with no change. The pre-2021 seasons were not verified — 2009-10
+also looks one day early, and nothing in the snapshot provides an independent
+date anchor for it.
 
 ---
 
@@ -281,16 +308,17 @@ Null means did-not-play, not missing data.
 
 ### D1. `nba.player_info`
 
-* Covers **only 2024-25 and 2025-26**, so it cannot supply season-specific
-  attributes for earlier seasons.
-* `birthdate` is a **string** with a `T00:00:00` suffix (1,184 rows), not a
-  date.
+**Fixed at source 2026-11-07:** the table now covers all five analysis
+seasons (2021-22: 603 rows, 2022-23: 540, 2023-24: 475, 2024-25: 5,065,
+2025-26: 565) and `birthdate` is typed `date`, not text. Each player's latest
+bio was replicated into the seasons they played; only `RaiQuan Gray` needed a
+fresh fetch.
 
 **Handled in:** `features.player_attributes()` takes the most recent row per
 player and uses only genuinely time-invariant fields (birthdate, listed
 height and weight, draft position), computing age per spell from the
-birthdate. Players who retired before 2024-25 are missing entirely; 759 of
-the 766 players in the spell set are covered.
+birthdate. The column cast in that function tolerates either a date or a
+string, so older snapshots still load.
 
 ### D2. `nba.player_season_stats.player_id` is a float-string — 5,039 rows
 
@@ -302,9 +330,10 @@ this table is not used.
 
 ### D3. `util.unmatched_player_source_vw`
 
-Currently **empty**, which is the healthy state — a non-empty file means the
-NBA/Statyx crosswalk has gaps that will silently drop rows from any
-cross-source join. Worth asserting on, not just inspecting.
+Currently **2 rows**, down from a clean state at snapshot time. Those are
+players the NBA/Statyx crosswalk has not matched; a growing file means the
+crosswalk has gaps that will silently drop rows from any cross-source join.
+Worth asserting on, not just inspecting.
 
 ---
 

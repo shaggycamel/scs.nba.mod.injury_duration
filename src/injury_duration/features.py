@@ -44,7 +44,7 @@ def player_attributes() -> pl.DataFrame:
         .agg(pl.all().last())
         .select(
             "player_id",
-            pl.col("birthdate").str.slice(0, 10).str.to_date().alias("birthdate"),
+            pl.col("birthdate").cast(pl.String).str.slice(0, 10).str.to_date().alias("birthdate"),
             pl.col("height_cm").cast(pl.Float64),
             pl.col("weight_kg").cast(pl.Float64),
             pl.col("position").replace_strict(POSITION_GROUPS, default="unknown")
