@@ -1,0 +1,15 @@
+stratum,point,n,observed_frac,km_mean_actual,mae_observed,c_index
+all test spells,mean,1565,0.804,9.3,4.981,0.7327
+all test spells,median,1565,0.804,9.3,2.599,0.7404
+fresh (last played <= 4d ago),mean,1350,0.847,6.4,4.454,0.7084
+fresh (last played <= 4d ago),median,1350,0.847,6.4,2.111,0.7112
+gap 5-10 days,mean,86,0.616,12.7,6.571,0.6528
+gap 5-10 days,median,86,0.616,12.7,3.434,0.6961
+gap > 10 days,mean,114,0.535,27.1,12.482,0.6922
+gap > 10 days,median,114,0.535,27.1,9.574,0.6913
+not at season open,mean,1510,0.807,7.9,4.684,0.7211
+not at season open,median,1510,0.807,7.9,2.313,0.7279
+rotation players (>=15 min/game over last 5),mean,1332,0.865,7.5,4.537,0.7162
+rotation players (>=15 min/game over last 5),median,1332,0.865,7.5,2.372,0.7209
+fresh AND rotation,mean,1215,0.879,5.7,4.22,0.6956
+fresh AND rotation,median,1215,0.879,5.7,2.026,0.6952

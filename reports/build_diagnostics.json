@@ -1,0 +1,78 @@
+{
+  "rows": 62840,
+  "unresolved_rows": 158,
+  "unresolved_names": 25,
+  "report_game_id_mismatch": 35,
+  "report_rows_mapped": 62345,
+  "report_rows_unmapped": 337,
+  "panel_rows": 225211,
+  "panel_states": [
+    {
+      "state": "played",
+      "len": 137499
+    },
+    {
+      "state": "out",
+      "len": 46040
+    },
+    {
+      "state": "unlisted_absent",
+      "len": 35280
+    },
+    {
+      "state": "missed_Questionable",
+      "len": 4193
+    },
+    {
+      "state": "missed_Doubtful",
+      "len": 996
+    },
+    {
+      "state": "missed_Available",
+      "len": 942
+    },
+    {
+      "state": "missed_Probable",
+      "len": 261
+    }
+  ],
+  "spells": 6736,
+  "spell_event_rate": 0.7770190023752969,
+  "censor_reasons": [
+    {
+      "censor_reason": "returned",
+      "len": 5234
+    },
+    {
+      "censor_reason": "dropped_from_report",
+      "len": 619
+    },
+    {
+      "censor_reason": "season_end",
+      "len": 608
+    },
+    {
+      "censor_reason": "left_gleague",
+      "len": 175
+    },
+    {
+      "censor_reason": "left_roster",
+      "len": 53
+    },
+    {
+      "censor_reason": "left_protocol",
+      "len": 30
+    },
+    {
+      "censor_reason": "left_personal",
+      "len": 14
+    },
+    {
+      "censor_reason": "left_suspension",
+      "len": 3
+    }
+  ],
+  "hazard_rows": 34002,
+  "hazard_return_rate": 0.15393212163990352,
+  "feature_cols": 71
+}

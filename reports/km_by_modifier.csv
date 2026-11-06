@@ -1,0 +1,12 @@
+modifier,value,n,km_mean,km_median
+is_surgical,true,100,42.85,27.0
+is_surgical,false,5893,10.97,2.0
+is_recovery_stage,true,127,26.45,5.0
+is_recovery_stage,false,5866,11.29,2.0
+is_management,true,693,4.09,1.0
+is_management,false,5300,12.61,3.0
+is_bone_stress,false,5974,11.57,2.0
+mentions_major_structure,true,164,33.38,3.0
+mentions_major_structure,false,5829,10.48,2.0
+is_catastrophic,true,39,80.37,102.0
+is_catastrophic,false,5954,10.76,2.0
