@@ -175,6 +175,24 @@ feature identical** to the full build, while fetching 188,511 box-score rows
 instead of 588,712. That validates using a player-filtered snapshot for daily
 inference; the production job still needs an active-spell selection step.
 
+## Scheduled daily job
+
+`__main__.py` is the runner entry point. It runs the lean path end to end:
+
+1. `18_active_spells.py` — current-season mini snapshot → ongoing spells
+2. `16_lean_fetch.py` — target players' box history, all injuries, references
+3. `01_build.py` — spells/features on the lean snapshot
+4. `19_daily_predict.py` — score the latest prediction date
+5. `15_publish_daily.py --append` — append that date to
+   `mod.injury_daily_forecast`
+
+```bash
+uv run --group data python __main__.py --season 2026-27
+```
+
+It writes `{"row_count": n}` to `SCS_RESULT_FILE` for `scs.nba.mod.runner`, or
+its own `util.update_log` row when run standalone.
+
 ## Layout
 
 ```

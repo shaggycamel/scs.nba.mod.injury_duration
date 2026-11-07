@@ -57,6 +57,10 @@ known before tip-off.
   `--diagnostics-out artifacts/current_build_diagnostics.json` so the frozen
   report diagnostics are not overwritten. Report rows are used only once their
   game date has arrived; no future report state is allowed into a prediction.
+- The scheduled path is root `__main__.py` → `scripts/job.py`: active spells →
+  lean fetch → build → `19_daily_predict.py` → `15_publish_daily.py --append`.
+  It uses `data/active`, `data/lean_current` and `artifacts/` only; no tracked
+  file is rewritten on the Jetson.
 
 ## Database (CockroachDB Cloud)
 - Cluster: `nba-data-mgmt` (id `11af18b7-ef5e-41b2-b3b7-5db438b1d403`),

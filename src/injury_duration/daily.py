@@ -33,8 +33,14 @@ def build_daily_states(
     features: pl.DataFrame,
     rows: pl.DataFrame,
     cutoff: date,
+    through: date | None = None,
 ) -> pl.DataFrame:
-    """One row per injured player per calendar day, as known that day."""
+    """One row per injured player per calendar day, as known that day.
+
+    `through` forces predictions to the data cutoff even when a spell has a
+    non-null next_date. The daily job uses it for active spells; the historical
+    backfill leaves it unset and stops the day before the return/censor event.
+    """
     design = ex.hazard_design(rows, features).filter(
         pl.col("spell_id").is_in(spells["spell_id"].to_list())
     )
@@ -52,7 +58,10 @@ def build_daily_states(
         # a G League assignment, a trade or a dropped report. Predictions stop
         # the day before it. Only a season-end censor has no next date, and
         # those predictions continue to the data cutoff.
-        end = r["next_date"] - timedelta(days=1) if r["next_date"] else cutoff
+        if through is not None:
+            end = through
+        else:
+            end = r["next_date"] - timedelta(days=1) if r["next_date"] else cutoff
         end = max(end, r["last_missed_date"])
         if end < r["start_date"]:
             continue

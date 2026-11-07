@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import polars as pl
@@ -83,6 +83,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--db-con", default="cockroach-write")
     parser.add_argument("--season", default="2026-27")
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="replace only one prediction_date instead of the whole season",
+    )
+    parser.add_argument(
+        "--prediction-date",
+        type=date.fromisoformat,
+        default=None,
+        help="date to replace with --append (default: latest in the input)",
+    )
     return parser.parse_args()
 
 
@@ -127,19 +138,26 @@ def main() -> None:
     ).select(COLUMNS)
 
     hub = scs_hub.SportsHub(db_con=args.db_con)
+    if args.append:
+        replace_date = args.prediction_date or out["prediction_date"].max()
+        out = out.filter(pl.col("prediction_date") == replace_date)
+        where = f"season = '{args.season}' AND prediction_date = DATE '{replace_date}'"
+    else:
+        replace_date = None
+        where = f"season = '{args.season}'"
+
     with hub.db.engine.begin() as conn:
         conn.execute(text(DDL))
-        conn.execute(
-            text(f"DELETE FROM {TABLE} WHERE season = '{args.season}'")
-        )
+        conn.execute(text(f"DELETE FROM {TABLE} WHERE {where}"))
         out.write_database(TABLE, conn, if_table_exists="append")
         conn.execute(text(f"GRANT SELECT ON {TABLE} TO kobe_public"))
 
     count = hub.db.read(
-        f"SELECT count(*) AS n FROM {TABLE} WHERE season = '{args.season}'"
+        f"SELECT count(*) AS n FROM {TABLE} WHERE {where}"
     ).item()
+    suffix = f" on {replace_date}" if replace_date else ""
     print(
-        f"{args.db_con}: wrote {count:,} rows for {args.season} to {TABLE} "
+        f"{args.db_con}: wrote {count:,} rows for {args.season}{suffix} to {TABLE} "
         f"(model trained through {trained})"
     )
 

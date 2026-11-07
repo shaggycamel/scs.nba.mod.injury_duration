@@ -45,6 +45,12 @@ def sql_list(values: list[str] | list[int]) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--spells", type=Path, default=Path("data/build/spells.parquet"))
+    parser.add_argument(
+        "--players-file",
+        type=Path,
+        default=None,
+        help="Parquet with a player_id column; use this instead of --spells",
+    )
     parser.add_argument("--season", default="2025-26")
     parser.add_argument("--out", type=Path, default=Path("data/lean"))
     parser.add_argument("--db-con", default="cockroach-read")
@@ -53,12 +59,19 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    spells = pl.read_parquet(args.spells).filter(pl.col("season") == args.season)
-    if spells.is_empty():
-        raise SystemExit(f"no spells for {args.season!r} in {args.spells}")
-    players = sorted(spells["player_id"].unique().to_list())
-    through = spells["season"].max()
-    print(f"target: {len(players)} players, {spells.height:,} spells, through {through}")
+    if args.players_file:
+        target = pl.read_parquet(args.players_file)
+        players = sorted(target["player_id"].unique().to_list())
+        through = args.season
+        n_spells = target.height
+    else:
+        spells = pl.read_parquet(args.spells).filter(pl.col("season") == args.season)
+        if spells.is_empty():
+            raise SystemExit(f"no spells for {args.season!r} in {args.spells}")
+        players = sorted(spells["player_id"].unique().to_list())
+        through = spells["season"].max()
+        n_spells = spells.height
+    print(f"target: {len(players)} players, {n_spells:,} target rows, through {through}")
 
     hub = scs_hub.SportsHub(db_con=args.db_con)
     ids = sql_list(players)
