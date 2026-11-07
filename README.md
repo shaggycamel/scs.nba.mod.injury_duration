@@ -156,6 +156,25 @@ uv run --group data python scripts/15_publish_daily.py
 The publisher replaces the season's rows in one transaction, so rerunning after
 a correction is safe. `kobe_public` has `SELECT` on the table.
 
+## Lean inference experiment
+
+A prediction does not need every player's box-score history. `16_lean_fetch.py`
+pulls only the target players' box-score rows (plus the small reference tables
+and all injuries), and `17_check_lean_parity.py` compares the resulting
+features with the full build:
+
+```bash
+uv run --group data python scripts/16_lean_fetch.py --season 2025-26 --out data/lean
+INJURY_DURATION_DATA=data/lean uv run python scripts/01_build.py \
+  --diagnostics-out artifacts/lean_diagnostics.json
+uv run python scripts/17_check_lean_parity.py --season 2025-26
+```
+
+On 2025-26 this produced **1,581 spells / 7,635 hazard rows with every checked
+feature identical** to the full build, while fetching 188,511 box-score rows
+instead of 588,712. That validates using a player-filtered snapshot for daily
+inference; the production job still needs an active-spell selection step.
+
 ## Layout
 
 ```
