@@ -120,6 +120,30 @@ unless `strict=False` is passed. The artifacts directory is git-ignored, so the
 bundle is rebuilt from the current snapshot rather than committed. Scoring a
 season inside the training window is an in-sample demonstration.
 
+## Daily backfill
+
+The current season can be scored as of every calendar day, using only what was
+known on that day:
+
+```bash
+uv run --group data python scripts/00_fetch.py --through 2026-27 --out data/current
+INJURY_DURATION_DATA=data/current uv run python scripts/01_build.py \
+  --diagnostics-out artifacts/current_build_diagnostics.json
+INJURY_DURATION_DATA=data/current \
+  uv run python scripts/14_backfill_daily.py --season 2026-27
+```
+
+The backfill writes `reports/backfill_daily_2026_27.csv` (readable) and
+`artifacts/backfill_daily_2026_27.parquet` (full). Each row is one injured
+player-day with `prediction_date`, predicted return date and remaining games,
+P(return next game / within 7 / 14 / 30 days), and the actual return fields for
+evaluation. A report row is used only once its game date has arrived; the next
+game's report cannot leak into an earlier prediction. Predictions stop the day
+before a return or censor event, and season-end censoring runs to the data
+cutoff. Players with no NBA history are flagged `history_imputed`; their
+attribute and workload nulls are filled with training medians so a two-way
+debut does not produce a 90-game forecast.
+
 ## Layout
 
 ```

@@ -50,6 +50,13 @@ known before tip-off.
 - `persist.load()` checks the package versions recorded at fit time and refuses
   a mismatch unless `strict=False`. Keep scikit-learn / LightGBM pinned in
   `uv.lock` when a bundle is in use.
+- `scripts/14_backfill_daily.py` produces as-of daily return-date forecasts for
+  one season. Fetch a separate current-season snapshot (`00_fetch --through
+  2026-27 --out data/current`), build with
+  `INJURY_DURATION_DATA=data/current` and pass
+  `--diagnostics-out artifacts/current_build_diagnostics.json` so the frozen
+  report diagnostics are not overwritten. Report rows are used only once their
+  game date has arrived; no future report state is allowed into a prediction.
 
 ## Database (CockroachDB Cloud)
 - Cluster: `nba-data-mgmt` (id `11af18b7-ef5e-41b2-b3b7-5db438b1d403`),

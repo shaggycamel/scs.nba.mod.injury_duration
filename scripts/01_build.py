@@ -5,8 +5,10 @@ Run: uv run python scripts/01_build.py
 
 from __future__ import annotations
 
+import argparse
 import json
 import warnings
+from pathlib import Path
 
 import polars as pl
 
@@ -16,7 +18,20 @@ from injury_duration import hazard as hz
 warnings.filterwarnings("ignore", message="Sortedness of columns")
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--diagnostics-out",
+        type=Path,
+        default=None,
+        help="where to write build_diagnostics.json "
+             "(default: reports/build_diagnostics.json)",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     build = paths.ensure_build()
 
     sp, panel, diag = spells.build_spells()
@@ -34,9 +49,9 @@ def main() -> None:
     diag["hazard_rows"] = rows.height
     diag["hazard_return_rate"] = float(rows["returns_next"].mean())
     diag["feature_cols"] = len(features.all_features())
-    (paths.ensure_reports() / "build_diagnostics.json").write_text(
-        json.dumps(diag, indent=2, default=str)
-    )
+    diagnostics = args.diagnostics_out or (paths.ensure_reports() / "build_diagnostics.json")
+    diagnostics.parent.mkdir(parents=True, exist_ok=True)
+    diagnostics.write_text(json.dumps(diag, indent=2, default=str))
 
     print(f"spells            {sp.height:>8,}")
     print(f"  observed return {int(sp['event'].sum()):>8,}  "
