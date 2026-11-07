@@ -1,3 +1,3 @@
 model,n_features,log_loss,auc,log_loss_late,auc_late,n_rows_late,c_index
-without incentive,72,0.3178,0.8525,0.3889,0.8748,1246,0.738
-with incentive,78,0.3163,0.855,0.3871,0.8748,1246,0.7404
+without incentive,72,0.3166,0.8537,0.3868,0.8754,1246,0.7426
+with incentive,78,0.3156,0.8556,0.3862,0.8749,1246,0.7438

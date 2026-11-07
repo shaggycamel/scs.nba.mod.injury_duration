@@ -848,7 +848,7 @@ Tuesday, and gaps run from one to seven days, so a daily hazard would be mostly
 structural zeros dictated by the schedule.</p>
 
 {table(["model", "AUC", "log loss", "Brier skill"], pg_rows,
-       "Per-game return prediction, held-out 2025-26, 7,576 rows, base rate 0.166.")}
+       "Per-game return prediction, held-out 2025-26, 7,635 rows, base rate 0.166.")}
 
 <p>Boosted trees beat the forest and the linear model consistently; the two
 boosters are indistinguishable. Adding how the report has <em>moved</em> since
@@ -919,7 +919,7 @@ not accuracy.</p>
 <h2><span class="num">6</span>What not to trust</h2>
 <p><strong>Point forecasts for catastrophic injuries are close to meaningless, and
 that is the data rather than the model.</strong> Jayson Tatum's Achilles repair
-forecast a median of 26 games against an actual 62. But the model's per-game
+forecast a median of 25 games against an actual 62. But the model's per-game
 hazard for those cases sits at 0.02–0.03, which the raw data confirms is right.
 A hazard that flat <em>implies</em> a median in the low twenties with an enormous
 right tail, so 62 sits inside the predicted distribution. Report
@@ -927,8 +927,8 @@ P(out past 20 games), not a number of games.</p>
 <p><strong>Rotation status confounds injury severity.</strong> Recent minutes
 cannot distinguish “badly hurt” from “not in the rotation”, so the model's
 longest calls skew to two-way and deep-bench players. On genuinely fresh injuries
-to rotation players — the honest subpopulation — the C-index is 0.697 and the
-median-day error 2.0 games, against 0.742 over all spells.</p>
+to rotation players — the honest subpopulation — the C-index is 0.701 and the
+median-day error 2.03 games, against 0.744 over all spells.</p>
 <p><strong>Censoring is informative in both directions.</strong> An earlier
 version of this analysis claimed season-end censoring was plausibly independent
 of the injury, so the long tail was if anything understated. That was wrong:
@@ -936,8 +936,8 @@ of the injury, so the long tail was if anything understated. That was wrong:
 winning teams, for the same diagnoses, so some season-end censoring is a shutdown
 whose medical duration was shorter than the censoring time. The net is not
 knowable from duration data alone.</p>
-<p><strong>97 of the top 100 discretion scores are censored spells</strong> with a
-mean of 3.9 games missed. The measure is overwhelmingly detecting end-of-season
+<p><strong>93 of the top 100 discretion scores are censored spells</strong> with a
+mean of 4.6 games missed. The measure is overwhelmingly detecting end-of-season
 shutdowns — the dominant form of the behaviour, but a narrow window, and the
 counterfactual is never observed there. And the neutral prediction is a model
 output, not a measurement: it is only as good as the assumption that playoff

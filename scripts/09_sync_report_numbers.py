@@ -183,7 +183,7 @@ def main() -> None:
         rows.append([label, f"{int(r['spells']):,}", n(r["pred_games_actual"], 2),
                      n(r["pred_games_neutral"], 2), d])
     doc = swap(doc, "| situation when ruled out | spells | pred games, as observed |",
-               "Across all 6,736 spells the de-biasing",
+               "Across all 6,754 spells the de-biasing",
                table(["situation when ruled out", "spells", "pred games, as observed",
                       "at neutral urgency", "difference"], rows))
 

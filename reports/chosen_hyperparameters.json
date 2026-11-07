@@ -4,7 +4,7 @@
   },
   "index_only|forest": {
     "n_estimators": 400,
-    "min_samples_leaf": 50
+    "min_samples_leaf": 20
   },
   "index_only|histgb": {
     "max_iter": 400,

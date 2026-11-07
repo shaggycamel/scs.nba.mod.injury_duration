@@ -1,5 +1,5 @@
 situation_at_onset,spells,pred_games_actual,pred_games_neutral,discretion_games,discretion_days
-1 eliminated,458,17.53,9.31,8.23,18.72
-2 hope < .25,1473,10.06,7.9,2.16,4.78
-3 hope .25-.75,886,12.83,12.34,0.49,1.09
-4 hope > .75,3919,8.05,8.24,-0.18,-0.4
+1 eliminated,458,16.24,8.67,7.57,17.21
+2 hope < .25,1477,10.01,7.7,2.3,5.09
+3 hope .25-.75,889,12.69,12.16,0.53,1.16
+4 hope > .75,3930,7.81,8.06,-0.25,-0.55
