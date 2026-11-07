@@ -34,8 +34,10 @@ known before tip-off.
   convert at the boundary and say why.
 
 ## Data
-- The Parquet snapshot is not committed. Point `INJURY_DURATION_DATA` at a
-  directory containing `nba/` and `util/`, or pass `data=` to a loader.
+- The Parquet snapshot is not committed. Recreate it with
+  `uv run --group data python scripts/00_fetch.py`; it reads
+  `[cockroach-read]` and freezes the window at 2025-26. Point
+  `INJURY_DURATION_DATA` at another copy to override the default `data/`.
 - `docs/data_quality.md` documents every known defect in the snapshot and where
   it is worked around. Read it before new work; `scripts/10_data_quality_check.py`
   is the runnable version.

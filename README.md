@@ -46,16 +46,22 @@ uv sync --group dev
 
 ## Data
 
-The Parquet snapshot is not committed. Point `INJURY_DURATION_DATA` at a
-directory containing `nba/`, `statyx/` and `util/`:
+The Parquet snapshot is not committed. Recreate it from the live database with
+the optional `data` group:
 
 ```bash
-export INJURY_DURATION_DATA=/path/to/nba_adhoc/data
+uv sync --group data
+uv run --group data python scripts/00_fetch.py
 ```
 
-Every loader also accepts an explicit `data=` argument. If the environment
-variable is unset, the default is `data/` in the repository root. The snapshot
-is produced by `data/gen.py` in the `scs.nba.mod.scratch` repository.
+This reads through `[cockroach-read]`, writes `data/` (or
+`$INJURY_DURATION_DATA`), and freezes the analysis window at 2025-26. Use
+`--db-con postgres` for a local copy, `--through 2024-25` for a different
+cutoff, or `--out /tmp/injury-data` for a scratch directory. A `manifest.json`
+records the source section, cutoff and row counts.
+
+`paths.py` reads `INJURY_DURATION_DATA` at import time; if it is unset, the
+default is `data/` in the repository root.
 
 The model needs these files in particular:
 
@@ -63,21 +69,23 @@ The model needs these files in particular:
 nba/injuries.parquet
 nba/league_game_schedule.parquet
 nba/player_box_score.parquet
-nba/team_box_score.parquet
 nba/player_info.parquet
 nba/teams.parquet
-nba/team_roster.parquet
+nba/player_season_stats.parquet
 util/player_id_map_vw.parquet
+util/unmatched_player_source_vw.parquet
 ```
 
 `docs/data_quality.md` documents every defect found in the snapshot and where
 each is worked around. Read it before doing new work against the data — in
-particular, the box score does not record absence at all, and the 2021-22
-schedule dates are one day early.
+particular, the box score does not record absence at all. The 2021-22 schedule
+shift has been corrected at source.
 
 ## Reproduce
 
 ```bash
+uv sync --group data
+uv run --group data python scripts/00_fetch.py   # live DB -> Parquet snapshot
 uv run python scripts/01_build.py                # report + box score -> injury spells
 uv run python scripts/02_describe.py             # Kaplan-Meier duration by injury type
 uv run python scripts/03_models.py               # baselines vs hazard models, time splits

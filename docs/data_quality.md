@@ -2,8 +2,8 @@
 
 Written as a handover. Everything below was found while building
 `src/injury_duration/` (injury-duration modelling) against the `nba` Parquet
-snapshot, produced by `data/gen.py` in `scs.nba.mod.scratch` from the `nba`
-schema on CockroachDB.
+snapshot, produced by `scripts/00_fetch.py` from `[cockroach-read]` from the
+`nba` schema on CockroachDB.
 
 **Partly fixed at source (2026-11-07).** A1, A3, A5, A6, B2 and D1 were
 corrected in the `nba` tables in both Postgres and CockroachDB; the code
@@ -322,10 +322,9 @@ this table is not used.
 
 ### D3. `util.unmatched_player_source_vw`
 
-Currently **2 rows**, down from a clean state at snapshot time. Those are
-players the NBA/Statyx crosswalk has not matched; a growing file means the
-crosswalk has gaps that will silently drop rows from any cross-source join.
-Worth asserting on, not just inspecting.
+Currently **0 rows**, the healthy state — a non-empty file means the
+NBA/Statyx crosswalk has gaps that will silently drop rows from any
+cross-source join. Worth asserting on, not just inspecting.
 
 ---
 
