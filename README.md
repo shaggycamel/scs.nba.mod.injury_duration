@@ -144,6 +144,18 @@ cutoff. Players with no NBA history are flagged `history_imputed`; their
 attribute and workload nulls are filled with training medians so a two-way
 debut does not produce a 90-game forecast.
 
+## Published table
+
+The backfill is published to Cockroach `mod.injury_daily_forecast`, keyed by
+`(prediction_date, spell_id)`:
+
+```bash
+uv run --group data python scripts/15_publish_daily.py
+```
+
+The publisher replaces the season's rows in one transaction, so rerunning after
+a correction is safe. `kobe_public` has `SELECT` on the table.
+
 ## Layout
 
 ```
