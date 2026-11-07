@@ -102,6 +102,24 @@ uv run python scripts/10_data_quality_check.py   # audit the source snapshot for
 from there. Summary tables land in `reports/`; the rendered narrative is
 written to `docs/`.
 
+## Persisted model
+
+A fitted bundle is available for reuse without rerunning the modelling
+scripts:
+
+```bash
+uv run python scripts/12_fit_model.py       # artifacts/injury_duration/model.pkl
+uv run python scripts/13_predict.py         # score 2025-26 from that bundle
+```
+
+`model.pkl` holds two `HazardModel`s — `onset` (features known when the player
+is ruled out) and `live` (adds how the report has moved since) — each with its
+own fitted `Design` encoder. `model.json` records the training seasons, feature
+lists, hyperparameters and package versions; `load` refuses a version mismatch
+unless `strict=False` is passed. The artifacts directory is git-ignored, so the
+bundle is rebuilt from the current snapshot rather than committed. Scoring a
+season inside the training window is an in-sample demonstration.
+
 ## Layout
 
 ```

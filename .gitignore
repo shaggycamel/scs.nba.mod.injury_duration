@@ -11,5 +11,8 @@ dist/
 # Local data and generated analysis outputs
 /data/
 
+# Persisted model artifacts
+/artifacts/
+
 # Editor / OS noise
 .DS_Store

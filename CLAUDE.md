@@ -43,6 +43,14 @@ known before tip-off.
   is the runnable version.
 - Never commit raw data exports or large files.
 
+## Persisted model
+- `scripts/12_fit_model.py` fits the onset and live hazard models on every
+  season in the build and writes `artifacts/injury_duration/model.pkl` plus
+  `model.json`. The directory is git-ignored; rebuild it after a data refresh.
+- `persist.load()` checks the package versions recorded at fit time and refuses
+  a mismatch unless `strict=False`. Keep scikit-learn / LightGBM pinned in
+  `uv.lock` when a bundle is in use.
+
 ## Database (CockroachDB Cloud)
 - Cluster: `nba-data-mgmt` (id `11af18b7-ef5e-41b2-b3b7-5db438b1d403`),
   database `nba`, schema `nba`.
