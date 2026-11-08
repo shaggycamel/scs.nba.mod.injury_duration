@@ -61,27 +61,67 @@ REGION_RULES: list[tuple[str, str]] = [
     ("achilles", r"achilles"),
     ("knee", r"\bknee\b"),
     ("ankle", r"\bankle\b|deltoid ligament|syndesmo"),
-    ("foot", (r"\bfoot\b|midfoot|forefoot|navicular|metatars|plantar|\bheel\b|\btoe\b|"
-             r"sesamoid|cuboid|bunion|\barch\b")),
-    ("lower_leg", (r"\bcalf\b|soleus|tibia|fibula|\bshin\b|lower leg|gastrocnem|peroneal|"
-                  r"\bankle tendon\b")),
+    (
+        "foot",
+        (
+            r"\bfoot\b|midfoot|forefoot|navicular|metatars|plantar|\bheel\b|\btoe\b|"
+            r"sesamoid|cuboid|bunion|\barch\b"
+        ),
+    ),
+    (
+        "lower_leg",
+        (
+            r"\bcalf\b|soleus|tibia|fibula|\bshin\b|lower leg|gastrocnem|peroneal|"
+            r"\bankle tendon\b"
+        ),
+    ),
     ("hamstring", r"hamstring"),
     ("quad", r"\bquad|\bthigh\b|\bfemur\b|patellar tendon"),
-    ("hip_groin", (r"\bhip\b|groin|adductor|abductor|\bpelvi|\bglute|sacro|iliac|\bpsoas\b|"
-                  r"hip flexor|labrum|labral")),
-    ("back_core", (r"\bback\b|lumbar|thoracic|\bspine\b|\bdisc\b|oblique|abdom|\bcore\b|"
-                  r"\brib\b|\bflank\b|sports hernia|hernia|\bgroin wall\b")),
-    ("shoulder", (r"shoulder|clavicle|collarbone|rotator|\bac joint\b|scapula|\bdeltoid\b|"
-                 r"\bbicep|\btricep|\bpec\b|pectoral")),
+    (
+        "hip_groin",
+        (
+            r"\bhip\b|groin|adductor|abductor|\bpelvi|\bglute|sacro|iliac|\bpsoas\b|"
+            r"hip flexor|labrum|labral"
+        ),
+    ),
+    (
+        "back_core",
+        (
+            r"\bback\b|lumbar|thoracic|\bspine\b|\bdisc\b|oblique|abdom|\bcore\b|"
+            r"\brib\b|\bflank\b|sports hernia|hernia|\bgroin wall\b"
+        ),
+    ),
+    (
+        "shoulder",
+        (
+            r"shoulder|clavicle|collarbone|rotator|\bac joint\b|scapula|\bdeltoid\b|"
+            r"\bbicep|\btricep|\bpec\b|pectoral"
+        ),
+    ),
     ("elbow_arm", r"\belbow\b|forearm|\bucl\b|\bhumerus\b|\bulna\b|\bradius\b|\barm\b"),
-    ("hand_wrist", (r"\bwrist\b|\bhand\b|\bthumb\b|finger|\bmetacarp|\bphalan|scaphoid|"
-                   r"\bknuckle\b|\bnail\b")),
-    ("head_face", (r"\bhead\b|\bface\b|facial|\bnasal\b|\bnose\b|concussion|\bjaw\b|\beye\b|"
-                  r"\bdental\b|\btooth\b|\bteeth\b|\bmouth\b|\bear\b|\bskull\b|\borbital\b")),
+    (
+        "hand_wrist",
+        (
+            r"\bwrist\b|\bhand\b|\bthumb\b|finger|\bmetacarp|\bphalan|scaphoid|"
+            r"\bknuckle\b|\bnail\b"
+        ),
+    ),
+    (
+        "head_face",
+        (
+            r"\bhead\b|\bface\b|facial|\bnasal\b|\bnose\b|concussion|\bjaw\b|\beye\b|"
+            r"\bdental\b|\btooth\b|\bteeth\b|\bmouth\b|\bear\b|\bskull\b|\borbital\b"
+        ),
+    ),
     ("neck", r"\bneck\b|cervical"),
-    ("systemic", (r"illness|covid|\bflu\b|virus|gastro|stomach|respiratory|migraine|headache|"
-                 r"dehydrat|thrombosis|\bdvt\b|appendic|\bblood\b|cardiac|\bheart\b|"
-                 r"conditioning|\bimmune\b")),
+    (
+        "systemic",
+        (
+            r"illness|covid|\bflu\b|virus|gastro|stomach|respiratory|migraine|headache|"
+            r"dehydrat|thrombosis|\bdvt\b|appendic|\bblood\b|cardiac|\bheart\b|"
+            r"conditioning|\bimmune\b"
+        ),
+    ),
 ]
 
 # --------------------------------------------------------------------------
@@ -92,25 +132,50 @@ REGION_RULES: list[tuple[str, str]] = [
 # an operated or torn structure first, bone next, then soft tissue, then the
 # vaguer load-management language.
 AILMENT_RULES: list[tuple[str, str]] = [
-    ("surgery", (r"surgery|surgical|\brepair\b|\bprocedure\b|meniscectom|reconstruct|"
-                r"arthroscop|debridement|\bscope\b|fusion|implant|\bpost-?op")),
-    ("rupture_tear", (r"\btear\b|\btorn\b|\btears\b|rupture|avulsion|complete tear|"
-                     r"partial tear|detach")),
+    (
+        "surgery",
+        (
+            r"surgery|surgical|\brepair\b|\bprocedure\b|meniscectom|reconstruct|"
+            r"arthroscop|debridement|\bscope\b|fusion|implant|\bpost-?op"
+        ),
+    ),
+    (
+        "rupture_tear",
+        (
+            r"\btear\b|\btorn\b|\btears\b|rupture|avulsion|complete tear|"
+            r"partial tear|detach"
+        ),
+    ),
     ("fracture", r"fracture|\bbroken\b|stress reaction|\bbreak\b|fx\b"),
     ("concussion", r"concussion"),
     ("dislocation", r"dislocat|subluxation|instability|hyperextension|separation"),
     ("sprain", r"sprain"),
     ("strain", r"strain|\bpull\b|pulled"),
-    ("tendinopathy", (r"tendin|tendon|bursitis|fasciitis|impingement|inflammation|"
-                     r"irritation|synovitis|capsulitis|neuritis|neuropathy|nerve")),
+    (
+        "tendinopathy",
+        (
+            r"tendin|tendon|bursitis|fasciitis|impingement|inflammation|"
+            r"irritation|synovitis|capsulitis|neuritis|neuropathy|nerve"
+        ),
+    ),
     ("contusion", r"contusion|bruise|\bpointer\b|laceration|\bcut\b|\bwelt\b|hematoma"),
     ("effusion", r"effusion|swelling|\bfluid\b|\bcyst\b"),
-    ("illness", (r"illness|covid|\bflu\b|virus|gastro|stomach|respiratory|\bsick\b|"
-                r"thrombosis|\bdvt\b|migraine|headache")),
+    (
+        "illness",
+        (
+            r"illness|covid|\bflu\b|virus|gastro|stomach|respiratory|\bsick\b|"
+            r"thrombosis|\bdvt\b|migraine|headache"
+        ),
+    ),
     ("recovery", r"recovery|rehab|reconditioning|\breturn\b"),
     ("management", r"management|maintenance|\brest\b|load|precaution|monitor"),
-    ("soreness", (r"soreness|\bsore\b|tightness|\btight\b|spasm|\bpain\b|discomfort|"
-                 r"stiffness|\bache\b|\bcramp")),
+    (
+        "soreness",
+        (
+            r"soreness|\bsore\b|tightness|\btight\b|spasm|\bpain\b|discomfort|"
+            r"stiffness|\bache\b|\bcramp"
+        ),
+    ),
 ]
 
 
@@ -125,11 +190,7 @@ def _first_match(text: pl.Expr, rules: list[tuple[str, str]], default: str) -> p
 def _norm(col: str = "reason") -> pl.Expr:
     """Lower-case, collapse whitespace, and blank out the placeholder values."""
     return (
-        pl.col(col)
-        .fill_null("")
-        .str.to_lowercase()
-        .str.replace_all(r"\s+", " ")
-        .str.strip_chars()
+        pl.col(col).fill_null("").str.to_lowercase().str.replace_all(r"\s+", " ").str.strip_chars()
     )
 
 
@@ -155,15 +216,16 @@ def reason_features(col: str = "reason") -> list[pl.Expr]:
 
     parts = payload.str.split(";")
     body_raw = parts.list.get(0, null_on_oob=True).str.strip_chars()
-    ailment_raw = (
-        parts.list.slice(1).list.join("; ").str.strip_chars()
-    )
+    ailment_raw = parts.list.slice(1).list.join("; ").str.strip_chars()
 
     # Side lives at the front of the body-part slot.
     side = (
-        pl.when(body_raw.str.contains(r"^(left|l)\b")).then(pl.lit("left"))
-        .when(body_raw.str.contains(r"^(right|r)\b")).then(pl.lit("right"))
-        .when(body_raw.str.contains(r"bilateral|both")).then(pl.lit("bilateral"))
+        pl.when(body_raw.str.contains(r"^(left|l)\b"))
+        .then(pl.lit("left"))
+        .when(body_raw.str.contains(r"^(right|r)\b"))
+        .then(pl.lit("right"))
+        .when(body_raw.str.contains(r"bilateral|both"))
+        .then(pl.lit("bilateral"))
         .otherwise(pl.lit("none"))
     )
     body_part = (
@@ -180,9 +242,7 @@ def reason_features(col: str = "reason") -> list[pl.Expr]:
         .then(norm)
         .otherwise(body_part + pl.lit(" ") + ailment_raw)
     )
-    ailment_text = (
-        pl.when(ailment_raw.str.len_chars() == 0).then(norm).otherwise(ailment_raw)
-    )
+    ailment_text = pl.when(ailment_raw.str.len_chars() == 0).then(norm).otherwise(ailment_raw)
 
     ailment_class = _first_match(ailment_text, AILMENT_RULES, "unknown")
     region = _first_match(region_text, REGION_RULES, "unknown")
@@ -197,8 +257,10 @@ def reason_features(col: str = "reason") -> list[pl.Expr]:
         .otherwise(pl.lit("injury"))
     )
     category = (
-        pl.when(non_health != "").then(non_health)
-        .when(looks_health).then(health_kind)
+        pl.when(non_health != "")
+        .then(non_health)
+        .when(looks_health)
+        .then(health_kind)
         .otherwise(pl.lit("unknown"))
     )
 
@@ -212,8 +274,10 @@ def reason_features(col: str = "reason") -> list[pl.Expr]:
         # Stage / modifier flags. These cut across the pathology class: a knee
         # can be "ACL Surgery" (surgical) or "ACL Injury Recovery" (the rehab
         # that follows), and the two have very different remaining durations.
-        ailment_text.str.contains(r"surgery|surgical|repair|procedure|meniscectom|"
-                                  r"reconstruct|arthroscop|post-?op").alias("is_surgical"),
+        ailment_text.str.contains(
+            r"surgery|surgical|repair|procedure|meniscectom|"
+            r"reconstruct|arthroscop|post-?op"
+        ).alias("is_surgical"),
         ailment_text.str.contains(r"recovery|rehab|reconditioning").alias("is_recovery_stage"),
         ailment_text.str.contains(r"management|maintenance|precaution|load").alias("is_management"),
         ailment_text.str.contains(r"stress fracture|stress reaction").alias("is_bone_stress"),
@@ -221,12 +285,14 @@ def reason_features(col: str = "reason") -> list[pl.Expr]:
         # something catastrophic to it: "Achilles; Soreness" is a rest night.
         # The severity flag is the conjunction of structure and pathology, and
         # is built in `features`.
-        norm.str.contains(r"\bacl\b|\bpcl\b|cruciate|achilles|patellar tendon")
-        .alias("mentions_major_structure"),
+        norm.str.contains(r"\bacl\b|\bpcl\b|cruciate|achilles|patellar tendon").alias(
+            "mentions_major_structure"
+        ),
         # A multi-part reason ("Abdominal; Strain/Left Ankle Sprain") signals a
         # player carrying more than one problem at once.
-        (payload.str.count_matches(r"/") + payload.str.count_matches(r";"))
-        .alias("n_reason_separators"),
+        (payload.str.count_matches(r"/") + payload.str.count_matches(r";")).alias(
+            "n_reason_separators"
+        ),
         norm.str.len_chars().alias("reason_len"),
     ]
 

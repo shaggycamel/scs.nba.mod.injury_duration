@@ -64,8 +64,9 @@ def _regular_season_results() -> pl.DataFrame:
     )
     conf = pl.read_parquet(paths.TEAMS).select("team_slug", "conference")
     return (
-        cal.join(results, left_on=["game_id", "team_slug"], right_on=["game_id", "team"],
-                 how="left")
+        cal.join(
+            results, left_on=["game_id", "team_slug"], right_on=["game_id", "team"], how="left"
+        )
         .join(conf, on="team_slug", how="left")
         .with_columns((pl.col("team_winner") == pl.col("team_slug")).alias("won"))
         .select("season", "team_slug", "conference", "game_date", "team_game_idx", "won")
@@ -110,8 +111,14 @@ def daily_standings() -> pl.DataFrame:
         )
     )
     return out.select(
-        "season", "game_date", "team_slug", "conference", "wins", "played",
-        "games_left", "max_wins",
+        "season",
+        "game_date",
+        "team_slug",
+        "conference",
+        "wins",
+        "played",
+        "games_left",
+        "max_wins",
     )
 
 
@@ -127,7 +134,9 @@ def elimination_status() -> pl.DataFrame:
     st = daily_standings()
 
     rivals = st.select(
-        "season", "game_date", "conference",
+        "season",
+        "game_date",
+        "conference",
         pl.col("team_slug").alias("rival"),
         pl.col("wins").alias("rival_wins"),
         pl.col("max_wins").alias("rival_max_wins"),
@@ -142,9 +151,13 @@ def elimination_status() -> pl.DataFrame:
         # Win totals of the seed lines, for the stakes measures below.
         # To finish in the top N a team needs at most N-1 rivals above it,
         # so the line it must clear is the Nth-best rival: index N-1.
-        pl.col("rival_wins").sort(descending=True).get(PLAYIN_SEEDS - 1, null_on_oob=True)
+        pl.col("rival_wins")
+        .sort(descending=True)
+        .get(PLAYIN_SEEDS - 1, null_on_oob=True)
         .alias("rival_wins_at_playin_line"),
-        pl.col("rival_wins").sort(descending=True).get(PLAYOFF_SEEDS - 1, null_on_oob=True)
+        pl.col("rival_wins")
+        .sort(descending=True)
+        .get(PLAYOFF_SEEDS - 1, null_on_oob=True)
         .alias("rival_wins_at_playoff_line"),
     )
 
@@ -179,14 +192,20 @@ def team_incentive() -> pl.DataFrame:
     out = out.with_columns(
         pl.when(pl.col("elimination_date").is_null())
         .then(None)
-        .otherwise(pl.col("played") - pl.col("played").filter(
-            pl.col("game_date") == pl.col("elimination_date")
-        ).first().over("season", "team_slug"))
+        .otherwise(
+            pl.col("played")
+            - pl.col("played")
+            .filter(pl.col("game_date") == pl.col("elimination_date"))
+            .first()
+            .over("season", "team_slug")
+        )
         .alias("games_since_elimination")
     )
     return out.with_columns(
-        pl.when(pl.col("eliminated")).then(pl.lit("eliminated"))
-        .when(pl.col("clinched_playin")).then(pl.lit("clinched"))
+        pl.when(pl.col("eliminated"))
+        .then(pl.lit("eliminated"))
+        .when(pl.col("clinched_playin"))
+        .then(pl.lit("clinched"))
         .otherwise(pl.lit("in_contention"))
         .alias("incentive_state")
     )
@@ -195,6 +214,7 @@ def team_incentive() -> pl.DataFrame:
 # --------------------------------------------------------------------------
 # Playoff hope
 # --------------------------------------------------------------------------
+
 
 def final_playin_outcome() -> pl.DataFrame:
     """Whether each team actually finished in its conference's top ten."""
@@ -244,9 +264,7 @@ def playin_probability(n_sims: int = N_SIMS, seed: int = 0) -> pl.DataFrame:
     # ordering, and the generator is drawn from inside this loop, so an
     # unstable order silently makes the whole simulation irreproducible --
     # and with it every downstream model that uses playoff hope as a feature.
-    groups = {
-        k: g for k, g in st.group_by("season", "conference")
-    }
+    groups = {k: g for k, g in st.group_by("season", "conference")}
     for key in sorted(groups):
         season, conference = key
         grp = groups[key]
@@ -282,17 +300,32 @@ def playin_probability(n_sims: int = N_SIMS, seed: int = 0) -> pl.DataFrame:
 
     probs = pl.concat(frames)
     out = st.join(probs, on=["season", "conference", "game_date", "team_slug"], how="left")
-    return out.select(
-        "season", "game_date", "team_slug", "conference", "wins", "played",
-        "games_left", "wins_vs_playin_line", "wins_vs_playoff_line",
-        "eliminated", "clinched_playin", "incentive_state",
-        "games_since_elimination", "playin_probability",
-    ).with_columns(
-        # How much the next game matters to the team: highest when the play-in
-        # place is genuinely in doubt, near zero once it is settled either way.
-        # This is the "stakes" counterpart to hope.
-        (4.0 * pl.col("playin_probability") * (1.0 - pl.col("playin_probability")))
-        .alias("playin_stakes")
-    # A join does not promise an output order either, so pin it: downstream
-    # fits should not depend on which way round two equal rows landed.
-    ).sort("season", "team_slug", "game_date")
+    return (
+        out.select(
+            "season",
+            "game_date",
+            "team_slug",
+            "conference",
+            "wins",
+            "played",
+            "games_left",
+            "wins_vs_playin_line",
+            "wins_vs_playoff_line",
+            "eliminated",
+            "clinched_playin",
+            "incentive_state",
+            "games_since_elimination",
+            "playin_probability",
+        )
+        .with_columns(
+            # How much the next game matters to the team: highest when the play-in
+            # place is genuinely in doubt, near zero once it is settled either way.
+            # This is the "stakes" counterpart to hope.
+            (4.0 * pl.col("playin_probability") * (1.0 - pl.col("playin_probability"))).alias(
+                "playin_stakes"
+            )
+            # A join does not promise an output order either, so pin it: downstream
+            # fits should not depend on which way round two equal rows landed.
+        )
+        .sort("season", "team_slug", "game_date")
+    )

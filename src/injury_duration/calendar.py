@@ -62,11 +62,7 @@ def report_date_offsets(verbose: bool = False) -> dict[str, int]:
     pairs between the report and the schedule.
     """
     sched = _raw_schedule().select("season", "team_slug", "game_date").unique()
-    report = (
-        pl.read_parquet(paths.INJURIES)
-        .select(pl.col("team_slug"), "game_date")
-        .unique()
-    )
+    report = pl.read_parquet(paths.INJURIES).select(pl.col("team_slug"), "game_date").unique()
 
     offsets: dict[str, int] = {}
     for season in sched["season"].unique().sort():
@@ -74,15 +70,15 @@ def report_date_offsets(verbose: bool = False) -> dict[str, int]:
         scores = {}
         for off in CANDIDATE_OFFSETS:
             shifted = s.with_columns(pl.col("game_date") + pl.duration(days=off))
-            scores[off] = shifted.join(
-                report, on=["team_slug", "game_date"], how="semi"
-            ).height
+            scores[off] = shifted.join(report, on=["team_slug", "game_date"], how="semi").height
         best = max(scores, key=lambda k: scores[k])
         offsets[season] = best
         if verbose:
             total = s.height
-            print(f"{season}: offset {best:+d} matches {scores[best]}/{total} "
-                  f"(alternatives { {k: v for k, v in scores.items() if k != best} })")
+            print(
+                f"{season}: offset {best:+d} matches {scores[best]}/{total} "
+                f"(alternatives { {k: v for k, v in scores.items() if k != best} })"
+            )
     return offsets
 
 

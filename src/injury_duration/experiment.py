@@ -15,13 +15,24 @@ from . import hazard as hz
 # per-game value is already summarised by the `*_now` and `*_changed` columns,
 # so the spell-level one wins and these are dropped before the join.
 _COLLIDING = [
-    "body_region", "body_side", "ailment_class", "days_rest", "season_type",
-    "is_management", "is_recovery_stage", "is_surgical", "team_games_next_14d",
+    "body_region",
+    "body_side",
+    "ailment_class",
+    "days_rest",
+    "season_type",
+    "is_management",
+    "is_recovery_stage",
+    "is_surgical",
+    "team_games_next_14d",
 ]
 
 # Grid-only scaffolding, not features and not wanted downstream.
 _GRID_SCRATCH = [
-    "game_date", "started_in_playoffs", "beyond_season", "last_idx", "last_date",
+    "game_date",
+    "started_in_playoffs",
+    "beyond_season",
+    "last_idx",
+    "last_date",
     "team_game_idx",
 ]
 
@@ -61,14 +72,14 @@ def hazard_design(rows: pl.DataFrame, feats: pl.DataFrame) -> pl.DataFrame:
     keep = [c for c in rows.columns if c not in _COLLIDING]
     spell_cols = ["spell_id", "season", "games_missed", "event"] + spell_feature_cols()
     spell_cols = list(dict.fromkeys(spell_cols))
-    return rows.select(keep).drop(
-        ["season", "games_missed", "event"], strict=False
-    ).join(feats.select(spell_cols), on="spell_id", how="inner")
+    return (
+        rows.select(keep)
+        .drop(["season", "games_missed", "event"], strict=False)
+        .join(feats.select(spell_cols), on="spell_id", how="inner")
+    )
 
 
-def grid_design(
-    spells_feat: pl.DataFrame, tctx: pl.DataFrame, max_k: int = 100
-) -> pl.DataFrame:
+def grid_design(spells_feat: pl.DataFrame, tctx: pl.DataFrame, max_k: int = 100) -> pl.DataFrame:
     """Per-(spell, k) grid joined to index features, for duration prediction."""
     grid = hz.build_prediction_grid(spells_feat, tctx, max_k=max_k)
     spell_cols = ["spell_id", "season", "games_missed", "event"] + spell_feature_cols()

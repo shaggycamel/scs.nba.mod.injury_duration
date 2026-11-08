@@ -50,9 +50,9 @@ def git_commit() -> str | None:
 def held_out_metrics() -> dict:
     dm = pl.read_csv(paths.REPORTS / "duration_metrics.csv")
     pg = pl.read_csv(paths.REPORTS / "per_game_return_metrics.csv")
-    hist = dm.filter(
-        (pl.col("model") == "hazard lightgbm") & (pl.col("point") == "median")
-    ).row(0, named=True)
+    hist = dm.filter((pl.col("model") == "hazard lightgbm") & (pl.col("point") == "median")).row(
+        0, named=True
+    )
     live = pg.filter(pl.col("model") == "lightgbm / with_report_state").row(0, named=True)
     return {
         "duration": {

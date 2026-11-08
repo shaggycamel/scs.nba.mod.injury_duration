@@ -61,15 +61,13 @@ def main() -> None:
         raise SystemExit(f"no spells for {args.season!r} in the current build")
 
     cutoff = pl.read_parquet(paths.BUILD / "panel.parquet")["game_date"].max()
-    states = daily.build_daily_states(
-        spells, d["features"], d["rows"], cutoff
-    )
-    out = daily.forecast_daily(
-        bundle.live, states, d["team_context"], max_k=args.max_k
-    )
+    states = daily.build_daily_states(spells, d["features"], d["rows"], cutoff)
+    out = daily.forecast_daily(bundle.live, states, d["team_context"], max_k=args.max_k)
     out = out.with_columns(
-        pl.when(pl.col("event") == 1).then(pl.col("next_date"))
-        .otherwise(None).alias("actual_return_date"),
+        pl.when(pl.col("event") == 1)
+        .then(pl.col("next_date"))
+        .otherwise(None)
+        .alias("actual_return_date"),
         pl.col("games_missed").alias("actual_games_missed"),
         (pl.col("event") == 1).alias("return_seen"),
         (pl.col("event") == 0).alias("censored"),
@@ -82,9 +80,17 @@ def main() -> None:
     parquet_path.parent.mkdir(parents=True, exist_ok=True)
 
     readable = out.select(
-        "prediction_date", "spell_id", "player_id", "player_name", "team_slug",
-        "start_date", "games_missed_so_far", "days_missed_so_far", "status_clean",
-        "body_region", "ailment_class",
+        "prediction_date",
+        "spell_id",
+        "player_id",
+        "player_name",
+        "team_slug",
+        "start_date",
+        "games_missed_so_far",
+        "days_missed_so_far",
+        "status_clean",
+        "body_region",
+        "ailment_class",
         pl.col("pred_return_date_median").alias("pred_return_date"),
         pl.col("pred_games_remaining_median").alias("pred_games_median"),
         pl.col("pred_games_remaining_mean").alias("pred_games_mean"),
@@ -92,19 +98,27 @@ def main() -> None:
         pl.col("p_return_within_7d").round(3).alias("p_7d"),
         pl.col("p_return_within_14d").round(3).alias("p_14d"),
         pl.col("p_return_within_30d").round(3).alias("p_30d"),
-        "actual_return_date", "actual_games_missed", "return_seen", "censored",
-        "history_imputed", "censor_reason",
+        "actual_return_date",
+        "actual_games_missed",
+        "return_seen",
+        "censored",
+        "history_imputed",
+        "censor_reason",
     ).sort("prediction_date", "player_name")
     readable.write_csv(csv_path)
     out.write_parquet(parquet_path)
 
     n_spells = spells.height
     n_censored = spells.filter(pl.col("event") == 0).height
-    print(f"loaded {args.model}  (trained {bundle.metadata['seasons'][0]}.."
-          f"{bundle.metadata['seasons'][-1]})")
-    print(f"{args.season}: {n_spells:,} spells "
-          f"({n_censored:,} censored at {cutoff}); "
-          f"{states.height:,} player-days")
+    print(
+        f"loaded {args.model}  (trained {bundle.metadata['seasons'][0]}.."
+        f"{bundle.metadata['seasons'][-1]})"
+    )
+    print(
+        f"{args.season}: {n_spells:,} spells "
+        f"({n_censored:,} censored at {cutoff}); "
+        f"{states.height:,} player-days"
+    )
     print(f"  {csv_path}")
     print(f"  {parquet_path}")
     print()
@@ -127,25 +141,35 @@ def main() -> None:
         & pl.col("pred_return_date_median").is_not_null()
     ).with_columns(
         (pl.col("pred_return_date_median") - pl.col("actual_return_date"))
-        .dt.total_days().abs().alias("date_error_days"),
+        .dt.total_days()
+        .abs()
+        .alias("date_error_days"),
         (
             pl.col("pred_games_remaining_median")
             - (pl.col("games_missed") - pl.col("games_missed_so_far"))
-        ).abs().alias("games_error"),
-        pl.when(pl.col("days_missed_so_far") == 0).then(pl.lit("onset"))
-        .when(pl.col("days_missed_so_far") <= 3).then(pl.lit("1-3 days"))
-        .when(pl.col("days_missed_so_far") <= 7).then(pl.lit("4-7 days"))
-        .otherwise(pl.lit("8+ days")).alias("bucket"),
+        )
+        .abs()
+        .alias("games_error"),
+        pl.when(pl.col("days_missed_so_far") == 0)
+        .then(pl.lit("onset"))
+        .when(pl.col("days_missed_so_far") <= 3)
+        .then(pl.lit("1-3 days"))
+        .when(pl.col("days_missed_so_far") <= 7)
+        .then(pl.lit("4-7 days"))
+        .otherwise(pl.lit("8+ days"))
+        .alias("bucket"),
     )
     if resolved.height:
         print()
         print("resolved-spell error by prediction day (median absolute):")
         print(
-            resolved.group_by("bucket").agg(
+            resolved.group_by("bucket")
+            .agg(
                 pl.len().alias("player_days"),
                 pl.col("date_error_days").median().alias("date_error_days"),
                 pl.col("games_error").median().alias("games_error"),
-            ).sort("bucket")
+            )
+            .sort("bucket")
         )
 
 

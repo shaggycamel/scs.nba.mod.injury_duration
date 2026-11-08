@@ -63,10 +63,24 @@ def build_hazard_rows(spells: pl.DataFrame, panel: pl.DataFrame) -> pl.DataFrame
     that game.
     """
     rows = panel.filter(pl.col("in_spell")).select(
-        "spell_id", "spell_game_no", "player_id", "season", "team_slug",
-        "game_date", "game_id", "team_game_idx", "player_game_idx", "season_type",
-        "days_rest", "status_clean", "reason_category", "body_region",
-        "ailment_class", "is_management", "is_recovery_stage", "is_surgical",
+        "spell_id",
+        "spell_game_no",
+        "player_id",
+        "season",
+        "team_slug",
+        "game_date",
+        "game_id",
+        "team_game_idx",
+        "player_game_idx",
+        "season_type",
+        "days_rest",
+        "status_clean",
+        "reason_category",
+        "body_region",
+        "ailment_class",
+        "is_management",
+        "is_recovery_stage",
+        "is_surgical",
         "is_bridged",
     )
 
@@ -79,15 +93,14 @@ def build_hazard_rows(spells: pl.DataFrame, panel: pl.DataFrame) -> pl.DataFrame
     # game but the last of a censored spell, where it is simply unobserved —
     # and a censored spell has no row with the answer.
     rows = rows.with_columns(
-        (
-            (pl.col("spell_game_no") == pl.col("games_missed")) & (pl.col("event") == 1)
-        ).cast(pl.Int8).alias("returns_next")
+        ((pl.col("spell_game_no") == pl.col("games_missed")) & (pl.col("event") == 1))
+        .cast(pl.Int8)
+        .alias("returns_next")
     )
 
     rows = rows.sort("spell_id", "spell_game_no").with_columns(
         pl.col("spell_game_no").alias("games_missed_so_far"),
-        (pl.col("game_date") - pl.col("start_date")).dt.total_days()
-        .alias("days_missed_so_far"),
+        (pl.col("game_date") - pl.col("start_date")).dt.total_days().alias("days_missed_so_far"),
         (pl.col("season_type") == "Playoffs").alias("in_playoffs_now"),
         (pl.col("status_clean") == "Out").alias("status_now_out"),
         (pl.col("status_clean") == "Doubtful").alias("status_now_doubtful"),
@@ -114,7 +127,8 @@ def build_hazard_rows(spells: pl.DataFrame, panel: pl.DataFrame) -> pl.DataFrame
         .alias("_first_soft_at"),
     )
     rows = rows.with_columns(
-        (pl.col("spell_game_no") - pl.col("_first_soft_at")).fill_null(-1)
+        (pl.col("spell_game_no") - pl.col("_first_soft_at"))
+        .fill_null(-1)
         .alias("games_since_softened"),
         (pl.col("spell_game_no").cast(pl.Float64) + 1).log().alias("log_games_missed_so_far"),
     ).drop("_soft", "_first_soft_at")
@@ -134,19 +148,24 @@ def attach_schedule_density(rows: pl.DataFrame, tctx: pl.DataFrame) -> pl.DataFr
     predictions useless, because a real schedule never contains the sentinel.
     """
     incentive_now = tctx.select(
-        "season", "game_id", "team_slug",
+        "season",
+        "game_id",
+        "team_slug",
         pl.col("playin_probability").alias("hope_now"),
         pl.col("eliminated").alias("eliminated_now"),
     )
     next_gap = tctx.select(
-        "season", "team_slug",
+        "season",
+        "team_slug",
         (pl.col("team_game_idx") - 1).alias("team_game_idx"),
         pl.col("days_rest").cast(pl.Float64).alias("days_to_next_game"),
     )
     out = (
         rows.join(
             tctx.select(
-                "season", "game_id", "team_slug",
+                "season",
+                "game_id",
+                "team_slug",
                 pl.col("team_games_next_14d").alias("team_games_next_14d_now"),
             ),
             on=["season", "game_id", "team_slug"],
@@ -168,6 +187,7 @@ def attach_schedule_density(rows: pl.DataFrame, tctx: pl.DataFrame) -> pl.DataFr
 # --------------------------------------------------------------------------
 # Survival arithmetic
 # --------------------------------------------------------------------------
+
 
 def kaplan_meier(duration: np.ndarray, event: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Kaplan-Meier survival curve for discrete durations.
@@ -224,6 +244,7 @@ def survival_from_hazards(h: np.ndarray) -> np.ndarray:
 # --------------------------------------------------------------------------
 # Metrics
 # --------------------------------------------------------------------------
+
 
 def concordance_index(risk: np.ndarray, duration: np.ndarray, event: np.ndarray) -> float:
     """Harrell's C for right-censored data.
@@ -293,6 +314,7 @@ SCHEDULE_TIME_COLS = [
 # not use these; the dynamic model exists to use them.
 REPORT_TIME_COLS = [c for c in TIME_VARYING if c not in SCHEDULE_TIME_COLS]
 
+
 def build_prediction_grid(
     spells: pl.DataFrame, tctx: pl.DataFrame, max_k: int = 100
 ) -> pl.DataFrame:
@@ -314,13 +336,21 @@ def build_prediction_grid(
       postseason run. Everything past game 82 is extrapolated.
     """
     starts = spells.select(
-        "spell_id", "season", pl.col("team_slug_start").alias("team_slug"),
-        "start_team_game_idx", "start_date",
+        "spell_id",
+        "season",
+        pl.col("team_slug_start").alias("team_slug"),
+        "start_team_game_idx",
+        "start_date",
         (pl.col("start_season_type") == "Playoffs").alias("started_in_playoffs"),
-        "hope_at_onset", "eliminated_at_onset",
+        "hope_at_onset",
+        "eliminated_at_onset",
     )
     regular = tctx.filter(pl.col("season_type") == "Regular Season").select(
-        "season", "team_slug", "team_game_idx", "game_date", "days_rest",
+        "season",
+        "team_slug",
+        "team_game_idx",
+        "game_date",
+        "days_rest",
         "team_games_next_14d",
     )
 
@@ -359,18 +389,24 @@ def build_prediction_grid(
         pl.col("team_games_next_14d").fill_null(round(14 / MEAN_DAYS_BETWEEN_GAMES)),
     )
 
-    grid = grid.sort("spell_id", "k").with_columns(
-        pl.col("k").alias("games_missed_so_far"),
-        (pl.col("game_date") - pl.col("start_date")).dt.total_days()
-        .alias("days_missed_so_far"),
-        (pl.col("k").cast(pl.Float64) + 1).log().alias("log_games_missed_so_far"),
-        pl.col("days_rest").shift(-1).over("spell_id").alias("days_to_next_game"),
-        pl.col("started_in_playoffs").alias("in_playoffs_now"),
-        pl.col("team_games_next_14d").alias("team_games_next_14d_now"),
-    ).with_columns(
-        pl.col("days_to_next_game").fill_null(MEAN_DAYS_BETWEEN_GAMES),
-    ).with_columns(
-        (pl.col("days_to_next_game") == 1).alias("next_is_b2b"),
+    grid = (
+        grid.sort("spell_id", "k")
+        .with_columns(
+            pl.col("k").alias("games_missed_so_far"),
+            (pl.col("game_date") - pl.col("start_date"))
+            .dt.total_days()
+            .alias("days_missed_so_far"),
+            (pl.col("k").cast(pl.Float64) + 1).log().alias("log_games_missed_so_far"),
+            pl.col("days_rest").shift(-1).over("spell_id").alias("days_to_next_game"),
+            pl.col("started_in_playoffs").alias("in_playoffs_now"),
+            pl.col("team_games_next_14d").alias("team_games_next_14d_now"),
+        )
+        .with_columns(
+            pl.col("days_to_next_game").fill_null(MEAN_DAYS_BETWEEN_GAMES),
+        )
+        .with_columns(
+            (pl.col("days_to_next_game") == 1).alias("next_is_b2b"),
+        )
     )
 
     # The report-state columns are frozen at their value on the first missed

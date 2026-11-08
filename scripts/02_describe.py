@@ -62,10 +62,11 @@ def main() -> None:
     print(f"observed returns      {int(e.sum()):>8,} ({e.mean():.1%})")
     print(f"KM mean games missed  {hz.km_mean(d, e):>8.2f}")
     print(f"KM median             {hz.km_median(d, e):>8.0f}")
-    print(f"mean of observed only {d[e == 1].mean():>8.2f}   "
-          "<- what a censoring-blind average would say")
-    print(f"share of all games missed in spells of 10+: "
-          f"{d[d >= 10].sum() / d.sum():.1%}")
+    print(
+        f"mean of observed only {d[e == 1].mean():>8.2f}   "
+        "<- what a censoring-blind average would say"
+    )
+    print(f"share of all games missed in spells of 10+: {d[d >= 10].sum() / d.sum():.1%}")
     print()
     print("survival curve, all spells (P(still out after k games)):")
     for k in (1, 2, 3, 5, 10, 20, 30, 50):
@@ -103,19 +104,29 @@ def main() -> None:
     # derived in `features` rather than carried on the raw spell.
     inj_f = feats.filter(pl.col("index_category") == "injury")
     mods = []
-    for col in ["is_surgical", "is_recovery_stage", "is_management",
-                "is_bone_stress", "mentions_major_structure", "is_catastrophic"]:
+    for col in [
+        "is_surgical",
+        "is_recovery_stage",
+        "is_management",
+        "is_bone_stress",
+        "mentions_major_structure",
+        "is_catastrophic",
+    ]:
         src = inj_f if col == "is_catastrophic" else inj
         for val in (True, False):
             g = src.filter(pl.col(col) == val)
             if g.height < MIN_N:
                 continue
             dd, ee = g["games_missed"].to_numpy(), g["event"].to_numpy()
-            mods.append({
-                "modifier": col, "value": val, "n": g.height,
-                "km_mean": round(hz.km_mean(dd, ee), 2),
-                "km_median": hz.km_median(dd, ee),
-            })
+            mods.append(
+                {
+                    "modifier": col,
+                    "value": val,
+                    "n": g.height,
+                    "km_mean": round(hz.km_mean(dd, ee), 2),
+                    "km_median": hz.km_median(dd, ee),
+                }
+            )
     mod_df = pl.DataFrame(mods)
     print(mod_df)
     mod_df.write_csv(rep / "km_by_modifier.csv")
@@ -133,9 +144,12 @@ def main() -> None:
     f = feats.filter(pl.col("index_category") == "injury")
     print(km_summary(f, ["is_quick_recurrence"], min_n=20))
     age_bins = f.with_columns(
-        pl.when(pl.col("age") < 24).then(pl.lit("1 under 24"))
-        .when(pl.col("age") < 28).then(pl.lit("2 24-27"))
-        .when(pl.col("age") < 32).then(pl.lit("3 28-31"))
+        pl.when(pl.col("age") < 24)
+        .then(pl.lit("1 under 24"))
+        .when(pl.col("age") < 28)
+        .then(pl.lit("2 24-27"))
+        .when(pl.col("age") < 32)
+        .then(pl.lit("3 28-31"))
         .otherwise(pl.lit("4 32+"))
         .alias("age_band")
     )
@@ -150,8 +164,10 @@ def main() -> None:
         rows.with_columns(
             pl.when(pl.col("games_missed_so_far") <= 5)
             .then(pl.col("games_missed_so_far").cast(pl.String))
-            .when(pl.col("games_missed_so_far") <= 10).then(pl.lit("6-10"))
-            .when(pl.col("games_missed_so_far") <= 20).then(pl.lit("11-20"))
+            .when(pl.col("games_missed_so_far") <= 10)
+            .then(pl.lit("6-10"))
+            .when(pl.col("games_missed_so_far") <= 20)
+            .then(pl.lit("11-20"))
             .otherwise(pl.lit("21+"))
             .alias("missed_so_far")
         )

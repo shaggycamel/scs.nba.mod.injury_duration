@@ -18,17 +18,19 @@ from . import experiment as ex
 from . import models
 
 BEST_LGBM = {
-    "n_estimators": 300, "learning_rate": 0.03, "num_leaves": 15,
-    "min_child_samples": 50, "subsample": 0.8, "subsample_freq": 1,
+    "n_estimators": 300,
+    "learning_rate": 0.03,
+    "num_leaves": 15,
+    "min_child_samples": 50,
+    "subsample": 0.8,
+    "subsample_freq": 1,
     "colsample_bytree": 0.8,
 }
 
 
-def fit(design: pl.DataFrame, cols: list[str], params: dict | None = None):
+def fit(design: pl.DataFrame, cols: list[str], params: dict | None = None) -> models.HazardModel:
     num, cat = ex.split_numeric_categorical(cols)
-    return models.HazardModel(
-        "lightgbm", "lightgbm", num, cat, params or BEST_LGBM
-    ).fit(design)
+    return models.HazardModel("lightgbm", "lightgbm", num, cat, params or BEST_LGBM).fit(design)
 
 
 def forecast_at_onset(
@@ -41,19 +43,30 @@ def forecast_at_onset(
     grid = ex.grid_design(spell_features, tctx, max_k=max_k)
     pred = models.predict_from_grid(model, grid, max_k=max_k)
     return spell_features.select(
-        "spell_id", "player_name", "season", "start_date", "team_slug_start",
-        "body_region", "ailment_class", "index_status", "index_reason",
-        "games_missed", "days_out", "event", "censor_reason",
+        "spell_id",
+        "player_name",
+        "season",
+        "start_date",
+        "team_slug_start",
+        "body_region",
+        "ailment_class",
+        "index_status",
+        "index_reason",
+        "games_missed",
+        "days_out",
+        "event",
+        "censor_reason",
     ).join(pred, on="spell_id", how="left")
 
 
-def forecast_in_progress(
-    model: models.HazardModel, design_rows: pl.DataFrame
-) -> pl.DataFrame:
+def forecast_in_progress(model: models.HazardModel, design_rows: pl.DataFrame) -> pl.DataFrame:
     """P(plays the next game) at each game of each spell, as it unfolded."""
     p = model.hazard(design_rows)
     return design_rows.select(
-        "spell_id", "games_missed_so_far", "game_date", "status_clean",
+        "spell_id",
+        "games_missed_so_far",
+        "game_date",
+        "status_clean",
         "returns_next",
     ).with_columns(pl.Series("p_plays_next", np.round(p, 4)))
 
@@ -72,8 +85,12 @@ def survival_curve(
         .with_columns(pl.Series("hazard", h))
         .sort("spell_id", "k")
         .with_columns(
-            (1 - pl.col("hazard").clip(1e-9, 1 - 1e-9)).log().cum_sum()
-            .over("spell_id").exp().alias("p_still_out")
+            (1 - pl.col("hazard").clip(1e-9, 1 - 1e-9))
+            .log()
+            .cum_sum()
+            .over("spell_id")
+            .exp()
+            .alias("p_still_out")
         )
     )
 

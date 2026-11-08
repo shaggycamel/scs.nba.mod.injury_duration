@@ -89,9 +89,9 @@ def main() -> None:
     args = parse_args()
     hub = scs_hub.SportsHub(db_con=args.db_con)
 
-    reasons = hub.db.read(
-        "SELECT DISTINCT coalesce(reason, '') AS reason FROM nba.injuries"
-    ).sort("reason")
+    reasons = hub.db.read("SELECT DISTINCT coalesce(reason, '') AS reason FROM nba.injuries").sort(
+        "reason"
+    )
     parsed = (
         reasons.with_columns(taxonomy.reason_features())
         .with_columns(
@@ -104,9 +104,7 @@ def main() -> None:
     with hub.db.engine.begin() as conn:
         conn.execute(text(TABLE_DDL))
         conn.execute(text("DELETE FROM nba.injury_reason_map"))
-        parsed.write_database(
-            "nba.injury_reason_map", conn, if_table_exists="append"
-        )
+        parsed.write_database("nba.injury_reason_map", conn, if_table_exists="append")
 
         has_view = conn.execute(
             text(
@@ -118,8 +116,7 @@ def main() -> None:
             conn.execute(text(VIEW_DDL))
 
     print(
-        f"{args.db_con}: wrote {parsed.height:,} parsed reasons; "
-        "nba.injury_reason_map is current"
+        f"{args.db_con}: wrote {parsed.height:,} parsed reasons; nba.injury_reason_map is current"
     )
 
 

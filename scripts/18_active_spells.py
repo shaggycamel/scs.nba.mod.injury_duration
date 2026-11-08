@@ -19,17 +19,50 @@ import polars as pl
 import scs_hub
 
 PLAYER_INFO_COLUMNS = [
-    "season", "player_id", "first_name", "last_name", "player_slug", "birthdate",
-    "school", "country", "last_affiliation", "height_cm", "weight_kg",
-    "season_exp", "jersey", "position", "rosterstatus",
-    "games_played_current_season_flag", "team_id", "team_name",
-    "team_abbreviation", "team_code", "team_city", "playercode",
-    "from_year", "to_year", "dleague_flag", "nba_flag", "games_played_flag",
-    "draft_year", "draft_round", "draft_number", "greatest_75_flag",
+    "season",
+    "player_id",
+    "first_name",
+    "last_name",
+    "player_slug",
+    "birthdate",
+    "school",
+    "country",
+    "last_affiliation",
+    "height_cm",
+    "weight_kg",
+    "season_exp",
+    "jersey",
+    "position",
+    "rosterstatus",
+    "games_played_current_season_flag",
+    "team_id",
+    "team_name",
+    "team_abbreviation",
+    "team_code",
+    "team_city",
+    "playercode",
+    "from_year",
+    "to_year",
+    "dleague_flag",
+    "nba_flag",
+    "games_played_flag",
+    "draft_year",
+    "draft_round",
+    "draft_number",
+    "greatest_75_flag",
 ]
 TEAMS_COLUMNS = [
-    "team_id", "team_slug", "team_long", "team_name", "conference", "division",
-    "first_season", "last_season", "stadium", "stadium_capacity", "active",
+    "team_id",
+    "team_slug",
+    "team_long",
+    "team_name",
+    "conference",
+    "division",
+    "first_season",
+    "last_season",
+    "stadium",
+    "stadium_capacity",
+    "active",
 ]
 
 
@@ -101,11 +134,21 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     active.write_parquet(args.out)
-    print(f"cutoff {last}, {all_spells.height:,} current-season spells, "
-          f"{active.height:,} active")
+    print(f"cutoff {last}, {all_spells.height:,} current-season spells, {active.height:,} active")
     print(active.group_by("censor_reason").len().sort("len", descending=True))
-    print(active.select(["spell_id", "player_id", "player_name", "start_date",
-                         "last_missed_date", "games_missed", "censor_reason"]).head(20))
+    print(
+        active.select(
+            [
+                "spell_id",
+                "player_id",
+                "player_name",
+                "start_date",
+                "last_missed_date",
+                "games_missed",
+                "censor_reason",
+            ]
+        ).head(20)
+    )
     print(f"wrote {args.out}")
 
 

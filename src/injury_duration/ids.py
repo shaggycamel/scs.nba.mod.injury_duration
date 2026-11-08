@@ -29,14 +29,20 @@ def normalise_name(col: str | pl.Expr) -> pl.Expr:
     )
 
 
-def _lookup(df: pl.DataFrame, name_col: str, id_col: str, out: str) -> tuple[pl.DataFrame, pl.DataFrame]:
+def _lookup(
+    df: pl.DataFrame, name_col: str, id_col: str, out: str
+) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Exact and normalised name -> id lookups, dropping ambiguous names."""
     base = df.select(
         pl.col(name_col).alias("nm"), pl.col(id_col).cast(pl.Int64).alias(out)
     ).drop_nulls()
-    exact = base.unique(subset=["nm", out]).group_by("nm").agg(
-        pl.col(out).first(), pl.col(out).n_unique().alias("n")
-    ).filter(pl.col("n") == 1).drop("n")
+    exact = (
+        base.unique(subset=["nm", out])
+        .group_by("nm")
+        .agg(pl.col(out).first(), pl.col(out).n_unique().alias("n"))
+        .filter(pl.col("n") == 1)
+        .drop("n")
+    )
     norm = (
         base.with_columns(normalise_name("nm").alias("nm"))
         .unique(subset=["nm", out])
@@ -70,8 +76,7 @@ def resolve_player_ids(report: pl.DataFrame) -> tuple[pl.DataFrame, dict]:
     diag = {
         "rows": out.height,
         "unresolved_rows": out.filter(pl.col("player_id").is_null()).height,
-        "unresolved_names": out.filter(pl.col("player_id").is_null())["player_name"]
-        .n_unique(),
+        "unresolved_names": out.filter(pl.col("player_id").is_null())["player_name"].n_unique(),
     }
     out = out.drop(["_nm", "id_map", "id_box", "id_map_n", "id_box_n"]).filter(
         pl.col("player_id").is_not_null()

@@ -16,6 +16,7 @@ two sets of figures.
 from __future__ import annotations
 
 import html
+from collections.abc import Callable
 from dataclasses import dataclass
 
 BAR_MAX = 24.0
@@ -100,7 +101,12 @@ def vbar(x: float, y_base: float, y_end: float, thick: float, r: float = BAR_RAD
     )
 
 
-def grid_x(box: Box, ticks: list[float], scale, label=None) -> str:
+def grid_x(
+    box: Box,
+    ticks: list[float],
+    scale: Callable[[float], float],
+    label: Callable[[float], str] | None = None,
+) -> str:
     """Vertical hairline gridlines with labels under the plot.
 
     `label` overrides the default number formatting, for axes whose units are
@@ -112,8 +118,7 @@ def grid_x(box: Box, ticks: list[float], scale, label=None) -> str:
     for t in ticks:
         x = scale(t)
         out.append(
-            f'<line class="grid" x1="{x:.2f}" y1="{box.y0:.2f}" '
-            f'x2="{x:.2f}" y2="{box.y1:.2f}"/>'
+            f'<line class="grid" x1="{x:.2f}" y1="{box.y0:.2f}" x2="{x:.2f}" y2="{box.y1:.2f}"/>'
         )
         out.append(
             f'<text class="tick" x="{x:.2f}" y="{box.y1 + 16:.2f}" '
@@ -122,14 +127,13 @@ def grid_x(box: Box, ticks: list[float], scale, label=None) -> str:
     return "".join(out)
 
 
-def grid_y(box: Box, ticks: list[float], scale, dp: int = 2) -> str:
+def grid_y(box: Box, ticks: list[float], scale: Callable[[float], float], dp: int = 2) -> str:
     """Horizontal hairline gridlines with labels left of the plot."""
     out = []
     for t in ticks:
         y = scale(t)
         out.append(
-            f'<line class="grid" x1="{box.x0:.2f}" y1="{y:.2f}" '
-            f'x2="{box.x1:.2f}" y2="{y:.2f}"/>'
+            f'<line class="grid" x1="{box.x0:.2f}" y1="{y:.2f}" x2="{box.x1:.2f}" y2="{y:.2f}"/>'
         )
         out.append(
             f'<text class="tick" x="{box.x0 - 8:.2f}" y="{y + 4:.2f}" '
@@ -146,10 +150,7 @@ def marked(tag: str, attrs: str, text: str) -> str:
     mark cannot hold a child, and emitting one anyway silently breaks the
     nesting for everything that follows it in the SVG.
     """
-    return (
-        f"<{tag} {attrs} data-tip=\"{esc(text)}\">"
-        f"<title>{esc(text)}</title></{tag}>"
-    )
+    return f'<{tag} {attrs} data-tip="{esc(text)}"><title>{esc(text)}</title></{tag}>'
 
 
 def legend(items: list[tuple[str, str]]) -> str:

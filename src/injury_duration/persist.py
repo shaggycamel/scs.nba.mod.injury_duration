@@ -90,8 +90,7 @@ def load(path: Path, strict: bool = True) -> ModelBundle:
         raise TypeError(f"{path} is not a ModelBundle")
     if bundle.metadata.get("bundle_version") != BUNDLE_VERSION:
         raise ValueError(
-            f"{path}: bundle version {bundle.metadata.get('bundle_version')} "
-            f"!= {BUNDLE_VERSION}"
+            f"{path}: bundle version {bundle.metadata.get('bundle_version')} != {BUNDLE_VERSION}"
         )
     trained = bundle.metadata.get("packages", {})
     current = package_versions()

@@ -45,8 +45,14 @@ def build_daily_states(
         pl.col("spell_id").is_in(spells["spell_id"].to_list())
     )
     meta = spells.select(
-        "spell_id", "player_name", "start_date", "last_missed_date", "next_date",
-        "event", "games_missed", "censor_reason",
+        "spell_id",
+        "player_name",
+        "start_date",
+        "last_missed_date",
+        "next_date",
+        "event",
+        "games_missed",
+        "censor_reason",
     )
 
     # Generate the calendar days a prediction is wanted for: from the first
@@ -91,18 +97,16 @@ def build_daily_states(
         strategy="backward",
     )
     states = states.filter(pl.col("game_date").is_not_null()).with_columns(
-        (pl.col("prediction_date") - pl.col("start_date")).dt.total_days()
+        (pl.col("prediction_date") - pl.col("start_date"))
+        .dt.total_days()
         .alias("days_missed_so_far"),
-        (pl.col("games_missed_so_far").cast(pl.Float64) + 1).log()
-        .alias("log_games_missed_so_far"),
+        (pl.col("games_missed_so_far").cast(pl.Float64) + 1).log().alias("log_games_missed_so_far"),
         pl.int_range(0, pl.len()).alias("state_id"),
     )
     return states
 
 
-def _impute_missing_history(
-    states: pl.DataFrame, model: models.HazardModel
-) -> pl.DataFrame:
+def _impute_missing_history(states: pl.DataFrame, model: models.HazardModel) -> pl.DataFrame:
     """Fill player-history features for players with no NBA games on record.
 
     The model was trained with nulls, and for ordinary players those nulls are
@@ -123,10 +127,7 @@ def _impute_missing_history(
         for c in med
     ]
     categorical = [
-        pl.when(no_history)
-        .then(pl.col(c).fill_null("unknown"))
-        .otherwise(pl.col(c))
-        .alias(c)
+        pl.when(no_history).then(pl.col(c).fill_null("unknown")).otherwise(pl.col(c)).alias(c)
         for c in cats
     ]
     return states.with_columns(numeric + categorical + [no_history.alias("history_imputed")])
@@ -151,8 +152,13 @@ def forecast_daily(
 
     regular = tctx.filter(pl.col("season_type") == "Regular Season")
     fut = regular.select(
-        "season", "team_slug", "team_game_idx", "game_date", "season_type",
-        "days_rest", "team_games_next_14d",
+        "season",
+        "team_slug",
+        "team_game_idx",
+        "game_date",
+        "season_type",
+        "days_rest",
+        "team_games_next_14d",
     )
     grid = grid.join(
         fut.rename(
@@ -170,7 +176,8 @@ def forecast_daily(
     # Gap from the future missed game to the one after it, matching how the
     # training rows define `days_to_next_game`.
     nxt = fut.select(
-        "season", "team_slug",
+        "season",
+        "team_slug",
         (pl.col("team_game_idx") - 1).alias("future_idx"),
         pl.col("days_rest").cast(pl.Float64).alias("_future_gap"),
     )
@@ -195,75 +202,99 @@ def forecast_daily(
         )
         .otherwise(pl.col("future_date"))
         .alias("future_date"),
-        pl.col("_future_gap").fill_null(hz.MEAN_DAYS_BETWEEN_GAMES)
-        .alias("days_to_next_game"),
+        pl.col("_future_gap").fill_null(hz.MEAN_DAYS_BETWEEN_GAMES).alias("days_to_next_game"),
         pl.col("future_next_14d").fill_null(round(14 / hz.MEAN_DAYS_BETWEEN_GAMES)),
-        pl.col("future_season_type").eq("Playoffs").fill_null(False)
-        .alias("in_playoffs_now"),
+        pl.col("future_season_type").eq("Playoffs").fill_null(False).alias("in_playoffs_now"),
     )
 
     grid = grid.with_columns(
         (pl.col("games_missed_so_far") + pl.col("step")).alias("games_missed_so_far"),
-        (pl.col("future_date") - pl.col("start_date")).dt.total_days()
-        .alias("days_missed_so_far"),
+        (pl.col("future_date") - pl.col("start_date")).dt.total_days().alias("days_missed_so_far"),
         (pl.col("days_to_next_game") == 1).alias("next_is_b2b"),
         pl.col("future_next_14d").alias("team_games_next_14d_now"),
-        (pl.col("games_missed_so_far") + pl.col("step")).cast(pl.Float64).add(1).log()
+        (pl.col("games_missed_so_far") + pl.col("step"))
+        .cast(pl.Float64)
+        .add(1)
+        .log()
         .alias("log_games_missed_so_far"),
     )
 
     h = model.hazard(grid)
     grid = grid.with_columns(pl.Series("hazard", h)).sort("state_id", "step")
-    grid = grid.with_columns(
-        (1 - pl.col("hazard")).cum_prod().over("state_id").alias("surv")
-    ).with_columns(
-        (
-            pl.col("hazard")
-            * pl.col("surv").shift(1).fill_null(1).over("state_id")
-        ).alias("p_return"),
-    ).with_columns(
-        pl.col("p_return").cum_sum().over("state_id").alias("cum_return"),
-        (
-            pl.col("p_return")
-            * pl.col("future_date").dt.epoch("d")
-        ).sum().over("state_id").alias("_mean_ord"),
-    ).with_columns(
-        (1 - pl.col("cum_return").last().over("state_id")).alias("_tail"),
-        pl.col("future_date").dt.epoch("d").last().over("state_id").alias("_last_ord"),
+    grid = (
+        grid.with_columns((1 - pl.col("hazard")).cum_prod().over("state_id").alias("surv"))
+        .with_columns(
+            (pl.col("hazard") * pl.col("surv").shift(1).fill_null(1).over("state_id")).alias(
+                "p_return"
+            ),
+        )
+        .with_columns(
+            pl.col("p_return").cum_sum().over("state_id").alias("cum_return"),
+            (pl.col("p_return") * pl.col("future_date").dt.epoch("d"))
+            .sum()
+            .over("state_id")
+            .alias("_mean_ord"),
+        )
+        .with_columns(
+            (1 - pl.col("cum_return").last().over("state_id")).alias("_tail"),
+            pl.col("future_date").dt.epoch("d").last().over("state_id").alias("_last_ord"),
+        )
     )
 
-    summary = grid.group_by("state_id").agg(
-        pl.col("step").filter(pl.col("cum_return") >= 0.5).min().alias("median_step"),
-        (1 + pl.col("surv").sum()).alias("mean_games"),
-        pl.col("p_return").first().alias("p_return_next_game"),
-        pl.col("p_return")
-        .filter((pl.col("future_date") - pl.col("prediction_date")).dt.total_days() <= 7)
-        .sum().alias("p_return_within_7d"),
-        pl.col("p_return")
-        .filter((pl.col("future_date") - pl.col("prediction_date")).dt.total_days() <= 14)
-        .sum().alias("p_return_within_14d"),
-        pl.col("p_return")
-        .filter((pl.col("future_date") - pl.col("prediction_date")).dt.total_days() <= 30)
-        .sum().alias("p_return_within_30d"),
-        pl.coalesce(
-            pl.col("future_date").filter(pl.col("cum_return") >= 0.5).min(),
-            pl.col("future_date").max(),
-        ).alias("pred_return_date_median"),
-        pl.col("_mean_ord").first().alias("_mean_ord"),
-        pl.col("_tail").first().alias("_tail"),
-        pl.col("_last_ord").first().alias("_last_ord"),
-    ).with_columns(
-        _date_from_days(
-            pl.col("_mean_ord") + pl.col("_tail") * (pl.col("_last_ord") + hz.MEAN_DAYS_BETWEEN_GAMES)
-        ).alias("pred_return_date_mean"),
-        pl.col("median_step").fill_null(max_k).alias("pred_games_remaining_median"),
-        pl.col("mean_games").alias("pred_games_remaining_mean"),
+    summary = (
+        grid.group_by("state_id")
+        .agg(
+            pl.col("step").filter(pl.col("cum_return") >= 0.5).min().alias("median_step"),
+            (1 + pl.col("surv").sum()).alias("mean_games"),
+            pl.col("p_return").first().alias("p_return_next_game"),
+            pl.col("p_return")
+            .filter((pl.col("future_date") - pl.col("prediction_date")).dt.total_days() <= 7)
+            .sum()
+            .alias("p_return_within_7d"),
+            pl.col("p_return")
+            .filter((pl.col("future_date") - pl.col("prediction_date")).dt.total_days() <= 14)
+            .sum()
+            .alias("p_return_within_14d"),
+            pl.col("p_return")
+            .filter((pl.col("future_date") - pl.col("prediction_date")).dt.total_days() <= 30)
+            .sum()
+            .alias("p_return_within_30d"),
+            pl.coalesce(
+                pl.col("future_date").filter(pl.col("cum_return") >= 0.5).min(),
+                pl.col("future_date").max(),
+            ).alias("pred_return_date_median"),
+            pl.col("_mean_ord").first().alias("_mean_ord"),
+            pl.col("_tail").first().alias("_tail"),
+            pl.col("_last_ord").first().alias("_last_ord"),
+        )
+        .with_columns(
+            _date_from_days(
+                pl.col("_mean_ord")
+                + pl.col("_tail") * (pl.col("_last_ord") + hz.MEAN_DAYS_BETWEEN_GAMES)
+            ).alias("pred_return_date_mean"),
+            pl.col("median_step").fill_null(max_k).alias("pred_games_remaining_median"),
+            pl.col("mean_games").alias("pred_games_remaining_mean"),
+        )
     )
 
     keep = [
-        "state_id", "spell_id", "player_id", "player_name", "season", "team_slug",
-        "start_date", "prediction_date", "games_missed_so_far", "days_missed_so_far",
-        "status_clean", "body_region", "ailment_class", "games_missed", "event",
-        "next_date", "censor_reason", "history_imputed",
+        "state_id",
+        "spell_id",
+        "player_id",
+        "player_name",
+        "season",
+        "team_slug",
+        "start_date",
+        "prediction_date",
+        "games_missed_so_far",
+        "days_missed_so_far",
+        "status_clean",
+        "body_region",
+        "ailment_class",
+        "games_missed",
+        "event",
+        "next_date",
+        "censor_reason",
+        "history_imputed",
     ]
     return states.select(keep).join(summary, on="state_id", how="left")

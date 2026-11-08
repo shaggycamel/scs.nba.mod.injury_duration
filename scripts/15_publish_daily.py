@@ -59,14 +59,35 @@ CREATE TABLE IF NOT EXISTS {TABLE} (
 """
 
 COLUMNS = [
-    "prediction_date", "spell_id", "season", "player_id", "player_name",
-    "team_slug", "injury_start_date", "games_missed_so_far",
-    "days_missed_so_far", "status", "body_region", "ailment_class",
-    "pred_return_date", "pred_return_date_mean", "pred_games_median",
-    "pred_games_mean", "p_next_game", "p_return_7d", "p_return_14d",
-    "p_return_30d", "actual_return_date", "actual_games_missed",
-    "return_seen", "censored", "history_imputed", "censor_reason",
-    "model_trained_through", "model_created_at", "generated_at",
+    "prediction_date",
+    "spell_id",
+    "season",
+    "player_id",
+    "player_name",
+    "team_slug",
+    "injury_start_date",
+    "games_missed_so_far",
+    "days_missed_so_far",
+    "status",
+    "body_region",
+    "ailment_class",
+    "pred_return_date",
+    "pred_return_date_mean",
+    "pred_games_median",
+    "pred_games_mean",
+    "p_next_game",
+    "p_return_7d",
+    "p_return_14d",
+    "p_return_30d",
+    "actual_return_date",
+    "actual_games_missed",
+    "return_seen",
+    "censored",
+    "history_imputed",
+    "censor_reason",
+    "model_trained_through",
+    "model_created_at",
+    "generated_at",
 ]
 
 
@@ -151,18 +172,11 @@ def main() -> None:
         conn.execute(text(DDL))
         conn.execute(text(f"DELETE FROM {TABLE} WHERE {where}"))
         out.write_database(TABLE, conn, if_table_exists="append")
-        conn.execute(
-            text(
-                f"CREATE OR REPLACE VIEW {PUBLIC_TABLE} AS "
-                f"SELECT * FROM {TABLE}"
-            )
-        )
+        conn.execute(text(f"CREATE OR REPLACE VIEW {PUBLIC_TABLE} AS SELECT * FROM {TABLE}"))
         conn.execute(text(f"GRANT SELECT ON {PUBLIC_TABLE} TO kobe_public"))
         conn.execute(text(f"REVOKE SELECT ON {TABLE} FROM kobe_public"))
 
-    count = hub.db.read(
-        f"SELECT count(*) AS n FROM {PUBLIC_TABLE} WHERE {where}"
-    ).item()
+    count = hub.db.read(f"SELECT count(*) AS n FROM {PUBLIC_TABLE} WHERE {where}").item()
     suffix = f" on {replace_date}" if replace_date else ""
     print(
         f"{args.db_con}: wrote {count:,} rows for {args.season}{suffix} to {PUBLIC_TABLE} "

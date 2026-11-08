@@ -61,13 +61,8 @@ class Design:
             # NaN-filled one: polars' median treats NaN as a value and would
             # hand back NaN for any column with a missing entry.
             med = df.select(pl.col(c).cast(pl.Float64, strict=False).median()).item()
-            self.medians[c] = (
-                0.0 if med is None or math.isnan(med) else float(med)
-            )
-        self.missing_cols = [
-            c for c in self.numeric
-            if df.select(pl.col(c).is_null().any()).item()
-        ]
+            self.medians[c] = 0.0 if med is None or math.isnan(med) else float(med)
+        self.missing_cols = [c for c in self.numeric if df.select(pl.col(c).is_null().any()).item()]
         self._fitted = True
         return self
 
@@ -92,7 +87,9 @@ class Design:
                 mapping = {v: i for i, v in enumerate(lv)}
                 other = mapping[OTHER]
                 exprs.append(
-                    pl.col(c).cast(pl.String).fill_null(MISSING)
+                    pl.col(c)
+                    .cast(pl.String)
+                    .fill_null(MISSING)
                     .replace_strict(mapping, default=other)
                     .cast(pl.Float64)
                     .alias(c)
@@ -120,9 +117,7 @@ class Design:
                 names += [f"{self.numeric[i]}__is_missing" for i in keep]
         for c in self.categorical:
             lv = self.levels[c]
-            col = df.select(
-                pl.col(c).cast(pl.String).fill_null(MISSING)
-            ).to_series().to_list()
+            col = df.select(pl.col(c).cast(pl.String).fill_null(MISSING)).to_series().to_list()
             idx = {v: i for i, v in enumerate(lv)}
             other = idx[OTHER]
             block = np.zeros((len(col), len(lv)), dtype=np.float64)

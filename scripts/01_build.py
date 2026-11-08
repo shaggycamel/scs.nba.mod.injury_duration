@@ -24,8 +24,7 @@ def parse_args() -> argparse.Namespace:
         "--diagnostics-out",
         type=Path,
         default=None,
-        help="where to write build_diagnostics.json "
-             "(default: reports/build_diagnostics.json)",
+        help="where to write build_diagnostics.json (default: reports/build_diagnostics.json)",
     )
     return parser.parse_args()
 
@@ -54,11 +53,9 @@ def main() -> None:
     diagnostics.write_text(json.dumps(diag, indent=2, default=str))
 
     print(f"spells            {sp.height:>8,}")
-    print(f"  observed return {int(sp['event'].sum()):>8,}  "
-          f"({sp['event'].mean():.1%})")
+    print(f"  observed return {int(sp['event'].sum()):>8,}  ({sp['event'].mean():.1%})")
     print(f"panel rows        {diag['panel_rows']:>8,}")
-    print(f"hazard rows       {rows.height:>8,}  "
-          f"return rate {diag['hazard_return_rate']:.3f}")
+    print(f"hazard rows       {rows.height:>8,}  return rate {diag['hazard_return_rate']:.3f}")
     print(f"features          {len(features.all_features()):>8,}")
     print()
     print("censoring:")
@@ -66,11 +63,15 @@ def main() -> None:
         print(f"  {r['censor_reason']:<22} {r['len']:>6,}")
     print()
     print("spells per season:")
-    per = sp.group_by("season").agg(
-        pl.len().alias("spells"),
-        pl.col("event").mean().round(3).alias("observed"),
-        pl.col("games_missed").median().alias("median_games"),
-    ).sort("season")
+    per = (
+        sp.group_by("season")
+        .agg(
+            pl.len().alias("spells"),
+            pl.col("event").mean().round(3).alias("observed"),
+            pl.col("games_missed").median().alias("median_games"),
+        )
+        .sort("season")
+    )
     print(per)
     print(f"\nwrote {build}")
 

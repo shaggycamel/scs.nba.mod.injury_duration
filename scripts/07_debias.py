@@ -39,8 +39,12 @@ TEST = ["2025-26"]
 FIT = TRAIN + VALID
 
 BEST = {
-    "n_estimators": 300, "learning_rate": 0.03, "num_leaves": 15,
-    "min_child_samples": 50, "subsample": 0.8, "subsample_freq": 1,
+    "n_estimators": 300,
+    "learning_rate": 0.03,
+    "num_leaves": 15,
+    "min_child_samples": 50,
+    "subsample": 0.8,
+    "subsample_freq": 1,
     "colsample_bytree": 0.8,
 }
 
@@ -61,10 +65,9 @@ INCENTIVE_COLS = tuple(NEUTRAL)
 
 def neutralise(df: pl.DataFrame) -> pl.DataFrame:
     """Overwrite the incentive columns with the neutral reference."""
-    return df.with_columns([
-        pl.lit(v).cast(df.schema[c]).alias(c)
-        for c, v in NEUTRAL.items() if c in df.columns
-    ])
+    return df.with_columns(
+        [pl.lit(v).cast(df.schema[c]).alias(c) for c, v in NEUTRAL.items() if c in df.columns]
+    )
 
 
 def fit(cols: list[str], design: pl.DataFrame) -> models.HazardModel:
@@ -102,8 +105,10 @@ def main() -> None:
     rows_late = te_rows.filter(pl.col("spell_id").is_in(late))
 
     comp = []
-    for name, mdl, cs in [("without incentive", m_without, without),
-                          ("with incentive", m_with, cols)]:
+    for name, mdl, cs in [
+        ("without incentive", m_without, without),
+        ("with incentive", m_with, cols),
+    ]:
         pred = models.predict_from_grid(mdl, grid)
         j = sp_te.select("spell_id", "games_missed", "event").join(pred, on="spell_id", how="left")
         met = ev.hazard_row_metrics(y, mdl.hazard(te_rows))
@@ -111,14 +116,19 @@ def main() -> None:
         late_met = ev.hazard_row_metrics(
             rows_late["returns_next"].to_numpy(), mdl.hazard(rows_late)
         )
-        comp.append({
-            "model": name, "n_features": len(cs),
-            "log_loss": round(met["log_loss"], 4), "auc": round(met["auc"], 4),
-            "log_loss_late": round(late_met["log_loss"], 4),
-            "auc_late": round(late_met["auc"], 4), "n_rows_late": late_met["n_rows"],
-            "c_index": round(dur["c_index"], 4),
-            "mae_days": None,
-        })
+        comp.append(
+            {
+                "model": name,
+                "n_features": len(cs),
+                "log_loss": round(met["log_loss"], 4),
+                "auc": round(met["auc"], 4),
+                "log_loss_late": round(late_met["log_loss"], 4),
+                "auc_late": round(late_met["auc"], 4),
+                "n_rows_late": late_met["n_rows"],
+                "c_index": round(dur["c_index"], 4),
+                "mae_days": None,
+            }
+        )
     cf = pl.DataFrame(comp).drop("mae_days")
     print(cf)
     cf.write_csv(rep / "incentive_model_comparison.csv")
@@ -140,23 +150,42 @@ def main() -> None:
 
     both = (
         feats.select(
-            "spell_id", "player_name", "season", "start_date", "team_slug_start",
-            "body_region", "ailment_class", "index_status", "hope_at_onset",
-            "eliminated_at_onset", "season_progress", "min_roll5",
-            "games_missed", "days_out", "event",
+            "spell_id",
+            "player_name",
+            "season",
+            "start_date",
+            "team_slug_start",
+            "body_region",
+            "ailment_class",
+            "index_status",
+            "hope_at_onset",
+            "eliminated_at_onset",
+            "season_progress",
+            "min_roll5",
+            "games_missed",
+            "days_out",
+            "event",
         )
-        .join(pred_actual.select(
-            "spell_id",
-            pl.col("pred_mean_games").alias("games_actual"),
-            pl.col("pred_median_games").alias("med_games_actual"),
-            pl.col("pred_mean_days").alias("days_actual"),
-        ), on="spell_id", how="left")
-        .join(pred_neutral.select(
-            "spell_id",
-            pl.col("pred_mean_games").alias("games_neutral"),
-            pl.col("pred_median_games").alias("med_games_neutral"),
-            pl.col("pred_mean_days").alias("days_neutral"),
-        ), on="spell_id", how="left")
+        .join(
+            pred_actual.select(
+                "spell_id",
+                pl.col("pred_mean_games").alias("games_actual"),
+                pl.col("pred_median_games").alias("med_games_actual"),
+                pl.col("pred_mean_days").alias("days_actual"),
+            ),
+            on="spell_id",
+            how="left",
+        )
+        .join(
+            pred_neutral.select(
+                "spell_id",
+                pl.col("pred_mean_games").alias("games_neutral"),
+                pl.col("pred_median_games").alias("med_games_neutral"),
+                pl.col("pred_mean_days").alias("days_neutral"),
+            ),
+            on="spell_id",
+            how="left",
+        )
         .with_columns(
             (pl.col("games_actual") - pl.col("games_neutral")).alias("discretion_games"),
             (pl.col("days_actual") - pl.col("days_neutral")).alias("discretion_days"),
@@ -164,18 +193,26 @@ def main() -> None:
     )
 
     print("Mean predicted games missed, actual team situation vs neutral:")
-    summ = both.group_by(
-        pl.when(pl.col("eliminated_at_onset")).then(pl.lit("1 eliminated"))
-        .when(pl.col("hope_at_onset") < 0.25).then(pl.lit("2 hope < .25"))
-        .when(pl.col("hope_at_onset") > 0.75).then(pl.lit("4 hope > .75"))
-        .otherwise(pl.lit("3 hope .25-.75")).alias("situation_at_onset")
-    ).agg(
-        pl.len().alias("spells"),
-        pl.col("games_actual").mean().round(2).alias("pred_games_actual"),
-        pl.col("games_neutral").mean().round(2).alias("pred_games_neutral"),
-        pl.col("discretion_games").mean().round(2).alias("discretion_games"),
-        pl.col("discretion_days").mean().round(2).alias("discretion_days"),
-    ).sort("situation_at_onset")
+    summ = (
+        both.group_by(
+            pl.when(pl.col("eliminated_at_onset"))
+            .then(pl.lit("1 eliminated"))
+            .when(pl.col("hope_at_onset") < 0.25)
+            .then(pl.lit("2 hope < .25"))
+            .when(pl.col("hope_at_onset") > 0.75)
+            .then(pl.lit("4 hope > .75"))
+            .otherwise(pl.lit("3 hope .25-.75"))
+            .alias("situation_at_onset")
+        )
+        .agg(
+            pl.len().alias("spells"),
+            pl.col("games_actual").mean().round(2).alias("pred_games_actual"),
+            pl.col("games_neutral").mean().round(2).alias("pred_games_neutral"),
+            pl.col("discretion_games").mean().round(2).alias("discretion_games"),
+            pl.col("discretion_days").mean().round(2).alias("discretion_days"),
+        )
+        .sort("situation_at_onset")
+    )
     print(summ)
     summ.write_csv(rep / "discretion_by_situation.csv")
 
@@ -223,14 +260,20 @@ def main() -> None:
     print("4. PER-SPELL DISCRETION SCORES")
     print("=" * 78)
     out = both.select(
-        "player_name", "season", "start_date", "team_slug_start",
-        pl.col("body_region").alias("region"), pl.col("ailment_class").alias("ailment"),
+        "player_name",
+        "season",
+        "start_date",
+        "team_slug_start",
+        pl.col("body_region").alias("region"),
+        pl.col("ailment_class").alias("ailment"),
         pl.col("hope_at_onset").round(2).alias("hope"),
         pl.col("games_actual").round(1).alias("pred_games"),
         pl.col("games_neutral").round(1).alias("pred_games_neutral"),
         pl.col("discretion_games").round(1).alias("discretion_games"),
         pl.col("discretion_days").round(1).alias("discretion_days"),
-        "games_missed", "days_out", "event",
+        "games_missed",
+        "days_out",
+        "event",
     ).sort("discretion_games", descending=True)
     # The full per-spell table is regenerable model output; reports/ keeps the
     # readable extremes, which is what anyone browsing it wants.
@@ -244,15 +287,19 @@ def main() -> None:
 
     print()
     share = both.filter(pl.col("games_actual") > 0)
-    print(f"Across all {both.height:,} spells: mean predicted "
-          f"{both['games_actual'].mean():.2f} games as observed against "
-          f"{both['games_neutral'].mean():.2f} at neutral urgency "
-          f"({both['discretion_games'].mean():+.2f}).")
+    print(
+        f"Across all {both.height:,} spells: mean predicted "
+        f"{both['games_actual'].mean():.2f} games as observed against "
+        f"{both['games_neutral'].mean():.2f} at neutral urgency "
+        f"({both['discretion_games'].mean():+.2f})."
+    )
     el = both.filter(pl.col("eliminated_at_onset"))
-    print(f"Among the {el.height} spells beginning after the team was already "
-          f"mathematically eliminated: {el['games_actual'].mean():.2f} against "
-          f"{el['games_neutral'].mean():.2f} ({el['discretion_games'].mean():+.2f} games, "
-          f"{el['discretion_days'].mean():+.1f} days).")
+    print(
+        f"Among the {el.height} spells beginning after the team was already "
+        f"mathematically eliminated: {el['games_actual'].mean():.2f} against "
+        f"{el['games_neutral'].mean():.2f} ({el['discretion_games'].mean():+.2f} games, "
+        f"{el['discretion_days'].mean():+.1f} days)."
+    )
     del share
     print(f"\nwrote tables to {rep}")
 

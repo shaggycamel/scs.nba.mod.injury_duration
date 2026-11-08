@@ -48,11 +48,10 @@ MUTED = "var(--text-muted)"
 # Page furniture
 # --------------------------------------------------------------------------
 
+
 def table(headers: list[str], rows: list[list[object]], caption: str = "") -> str:
     head = "".join(f"<th>{esc(h)}</th>" for h in headers)
-    body = "".join(
-        "<tr>" + "".join(f"<td>{esc(c)}</td>" for c in r) + "</tr>" for r in rows
-    )
+    body = "".join("<tr>" + "".join(f"<td>{esc(c)}</td>" for c in r) + "</tr>" for r in rows)
     cap = f"<caption>{esc(caption)}</caption>" if caption else ""
     return f'<div class="t-wrap"><table>{cap}<thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
 
@@ -61,14 +60,15 @@ def details_table(headers, rows, label="Show the numbers") -> str:
     return f"<details><summary>{esc(label)}</summary>{table(headers, rows)}</details>"
 
 
-def figure(title: str, subtitle: str, svg: str, note: str = "",
-           lg: str = "", data: str = "") -> str:
+def figure(
+    title: str, subtitle: str, svg: str, note: str = "", lg: str = "", data: str = ""
+) -> str:
     return f"""<figure>
   <h3>{esc(title)}</h3>
   <p class="sub">{subtitle}</p>
   {lg}
   <div class="plot">{svg}</div>
-  {f'<figcaption>{note}</figcaption>' if note else ''}
+  {f"<figcaption>{note}</figcaption>" if note else ""}
   {data}
 </figure>"""
 
@@ -77,7 +77,7 @@ def stat(value: str, label: str, note: str = "") -> str:
     return (
         f'<div class="stat"><div class="stat-v">{esc(value)}</div>'
         f'<div class="stat-l">{esc(label)}</div>'
-        f'{f"<div class=\'stat-n\'>{esc(note)}</div>" if note else ""}</div>'
+        f"{f"<div class='stat-n'>{esc(note)}</div>" if note else ''}</div>"
     )
 
 
@@ -85,20 +85,24 @@ def stat(value: str, label: str, note: str = "") -> str:
 # Figures
 # --------------------------------------------------------------------------
 
+
 def fig_survival(sp: pl.DataFrame) -> str:
     """Survival curves: all spells against a severe and a mild diagnosis."""
     box = Box(720, 300, left=46, bottom=38)
     kmax = 40
     series = [
         ("All spells", S1, sp),
-        ("Surgery / tear", S2, sp.filter(pl.col("ailment_class").is_in(["surgery", "rupture_tear"]))),
+        (
+            "Surgery / tear",
+            S2,
+            sp.filter(pl.col("ailment_class").is_in(["surgery", "rupture_tear"])),
+        ),
         ("Soreness", S3, sp.filter(pl.col("ailment_class") == "soreness")),
     ]
     sx = lambda k: box.x0 + (k / kmax) * box.iw
     sy = lambda p: box.y1 - p * box.ih
 
-    parts = [grid_y(box, [0, 0.25, 0.5, 0.75, 1.0], sy, 2),
-             grid_x(box, [0, 10, 20, 30, 40], sx)]
+    parts = [grid_y(box, [0, 0.25, 0.5, 0.75, 1.0], sy, 2), grid_x(box, [0, 10, 20, 30, 40], sx)]
     rows, curves, ends = [], {}, []
     for label, colour, df in series:
         d, e = df["games_missed"].to_numpy(), df["event"].to_numpy()
@@ -113,8 +117,17 @@ def fig_survival(sp: pl.DataFrame) -> str:
         )
         parts.append(f'<path class="line" d="{path}" stroke="{colour}"/>')
         ends.append((label, colour, pts[-1]))
-        rows.append([label, f"{df.height:,}", f"{pts[1][1]:.0%}", f"{pts[3][1]:.0%}",
-                     f"{pts[10][1]:.0%}", f"{pts[20][1]:.0%}", f"{pts[40][1]:.0%}"])
+        rows.append(
+            [
+                label,
+                f"{df.height:,}",
+                f"{pts[1][1]:.0%}",
+                f"{pts[3][1]:.0%}",
+                f"{pts[10][1]:.0%}",
+                f"{pts[20][1]:.0%}",
+                f"{pts[40][1]:.0%}",
+            ]
+        )
 
     # End labels, nudged apart where two curves finish close together: a label
     # that overlaps another is worse than no label.
@@ -138,18 +151,22 @@ def fig_survival(sp: pl.DataFrame) -> str:
         txt = f"After {k} games missed — " + ", ".join(
             f"{lab} {dict(pts)[k]:.0%}" for lab, pts in curves.items()
         )
-        parts.append(marked(
-            "rect",
-            f'class="hit" x="{sx(k) - w / 2:.2f}" y="{box.y0:.2f}" '
-            f'width="{w:.2f}" height="{box.ih:.2f}"',
-            txt,
-        ))
+        parts.append(
+            marked(
+                "rect",
+                f'class="hit" x="{sx(k) - w / 2:.2f}" y="{box.y0:.2f}" '
+                f'width="{w:.2f}" height="{box.ih:.2f}"',
+                txt,
+            )
+        )
     parts.append(
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">team games missed</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="Survival curves by injury type">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="Survival curves by injury type">{"".join(parts)}</svg>'
+    )
     return figure(
         "Most absences are over in a week. A few never end.",
         "Kaplan-Meier probability a player is <em>still</em> out after k team games.",
@@ -181,25 +198,41 @@ def fig_censoring(km: pl.DataFrame) -> str:
         parts.append(
             f'<line class="dumb" x1="{sx(a):.2f}" y1="{y:.2f}" x2="{sx(b):.2f}" y2="{y:.2f}"/>'
         )
-        t = (f'{r["ailment_class"]}: {a:.1f} games if censored spells are ignored, '
-             f'{b:.1f} with them (n={r["n"]}, {r["censored"]} censored)')
-        parts.append(marked("circle", f'class="dot" cx="{sx(a):.2f}" cy="{y:.2f}" r="4.5" fill="{SEQ_DIM}"', t))
-        parts.append(marked("circle", f'class="dot" cx="{sx(b):.2f}" cy="{y:.2f}" r="5" fill="{S1}"', t))
+        t = (
+            f"{r['ailment_class']}: {a:.1f} games if censored spells are ignored, "
+            f"{b:.1f} with them (n={r['n']}, {r['censored']} censored)"
+        )
+        parts.append(
+            marked(
+                "circle", f'class="dot" cx="{sx(a):.2f}" cy="{y:.2f}" r="4.5" fill="{SEQ_DIM}"', t
+            )
+        )
+        parts.append(
+            marked("circle", f'class="dot" cx="{sx(b):.2f}" cy="{y:.2f}" r="5" fill="{S1}"', t)
+        )
         parts.append(
             f'<text class="cat" x="{box.x0 - 10:.2f}" y="{y + 4:.2f}" '
             f'text-anchor="end">{esc(r["ailment_class"].replace("_", " "))}</text>'
         )
-        parts.append(
-            f'<text class="dlabel" x="{sx(b) + 9:.2f}" y="{y + 4:.2f}">{b:.0f}</text>'
+        parts.append(f'<text class="dlabel" x="{sx(b) + 9:.2f}" y="{y + 4:.2f}">{b:.0f}</text>')
+        rows.append(
+            [
+                r["ailment_class"],
+                f"{r['n']:,}",
+                r["censored"],
+                f"{a:.2f}",
+                f"{b:.2f}",
+                f"{b / a:.1f}x",
+            ]
         )
-        rows.append([r["ailment_class"], f"{r['n']:,}", r["censored"],
-                     f"{a:.2f}", f"{b:.2f}", f"{b / a:.1f}x"])
     parts.append(
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">mean team games missed</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="Censoring effect by ailment">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="Censoring effect by ailment">{"".join(parts)}</svg>'
+    )
     return figure(
         "Dropping unfinished absences understates every diagnosis",
         "Mean games missed counting only spells that were seen to end (pale) against "
@@ -210,9 +243,7 @@ def fig_censoring(km: pl.DataFrame) -> str:
         f"the long ones. For tears the gap is {float(tear['naive_mean_observed']):.1f} "
         f"against {float(tear['km_mean']):.1f} games.",
         legend([("seen to end only", SEQ_DIM), ("Kaplan-Meier", S1)]),
-        details_table(
-            ["ailment", "n", "censored", "observed-only mean", "KM mean", "ratio"], rows
-        ),
+        details_table(["ailment", "n", "censored", "observed-only mean", "KM mean", "ratio"], rows),
     )
 
 
@@ -234,12 +265,14 @@ def fig_hazard(rows_df: pl.DataFrame) -> str:
     for i, r in enumerate(t.iter_rows(named=True)):
         x = box.x0 + i * band + (band - thick) / 2
         p = float(r["p"])
-        parts.append(marked(
-            "path",
-            f'd="{vbar(x, box.y1, sy(p), thick)}" fill="{SEQ}"',
-            f'after {r["games_missed_so_far"]} missed: {p:.1%} play the next game '
-            f'(n={r["n"]:,})',
-        ))
+        parts.append(
+            marked(
+                "path",
+                f'd="{vbar(x, box.y1, sy(p), thick)}" fill="{SEQ}"',
+                f"after {r['games_missed_so_far']} missed: {p:.1%} play the next game "
+                f"(n={r['n']:,})",
+            )
+        )
         parts.append(
             f'<text class="tick" x="{x + thick / 2:.2f}" y="{box.y1 + 16:.2f}" '
             f'text-anchor="middle">{r["games_missed_so_far"]}</text>'
@@ -254,8 +287,10 @@ def fig_hazard(rows_df: pl.DataFrame) -> str:
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">games already missed</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="Return hazard by games already missed">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="Return hazard by games already missed">{"".join(parts)}</svg>'
+    )
     return figure(
         "The longer a player has been out, the less likely he is back tomorrow",
         "Share of cases where the player suits up for the next game, by how many he "
@@ -275,8 +310,11 @@ def fig_hazard(rows_df: pl.DataFrame) -> str:
 def fig_incentive(state: pl.DataFrame) -> str:
     """Return hazard by the team's playoff position."""
     order = ["clinched", "in_contention", "eliminated"]
-    labels = {"clinched": "Play-in place clinched", "in_contention": "In contention",
-              "eliminated": "Mathematically eliminated"}
+    labels = {
+        "clinched": "Play-in place clinched",
+        "in_contention": "In contention",
+        "eliminated": "Mathematically eliminated",
+    }
     d = {r["incentive_state"]: r for r in state.iter_rows(named=True)}
     box = Box(720, 190, left=200, right=70, top=10, bottom=34)
     hi = max(float(d[k]["p"]) for k in order) * 1.18
@@ -288,25 +326,27 @@ def fig_incentive(state: pl.DataFrame) -> str:
         y = box.y0 + i * rowh + (rowh - 22) / 2
         p = float(r["p"])
         colour = S1 if k == "clinched" else (S2 if k == "eliminated" else SEQ_DIM)
-        parts.append(marked(
-            "path",
-            f'd="{hbar(box.x0, sx(p), y, 22)}" fill="{colour}"',
-            f'{labels[k]}: {p:.1%} ({r["rows"]:,} games across {r["spells"]:,} spells)',
-        ))
+        parts.append(
+            marked(
+                "path",
+                f'd="{hbar(box.x0, sx(p), y, 22)}" fill="{colour}"',
+                f"{labels[k]}: {p:.1%} ({r['rows']:,} games across {r['spells']:,} spells)",
+            )
+        )
         parts.append(
             f'<text class="cat" x="{box.x0 - 10:.2f}" y="{y + 15:.2f}" '
             f'text-anchor="end">{esc(labels[k])}</text>'
         )
-        parts.append(
-            f'<text class="dlabel" x="{sx(p) + 9:.2f}" y="{y + 15:.2f}">{p:.1%}</text>'
-        )
+        parts.append(f'<text class="dlabel" x="{sx(p) + 9:.2f}" y="{y + 15:.2f}">{p:.1%}</text>')
         rows.append([labels[k], f"{r['rows']:,}", f"{r['spells']:,}", f"{p:.4f}"])
     parts.append(
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">P(plays the next game)</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="Return hazard by team playoff position">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="Return hazard by team playoff position">{"".join(parts)}</svg>'
+    )
     return figure(
         "A player on an eliminated team is a third as likely to play tomorrow",
         "Same question, split by what the team still has to play for.",
@@ -343,24 +383,32 @@ def fig_did(did: pl.DataFrame) -> str:
             f'<line class="dumb{" emph" if is_all else ""}" x1="{sx(a):.2f}" y1="{y:.2f}" '
             f'x2="{sx(b):.2f}" y2="{y:.2f}"/>'
         )
-        t = (f'{name}: gap {a:+.3f} early, {b:+.3f} late; '
-             f'difference-in-differences {r["did"]:+.3f} {r["did_ci"]}')
-        parts.append(marked("circle", f'class="dot" cx="{sx(a):.2f}" cy="{y:.2f}" r="4.5" fill="{SEQ2_DIM}"', t))
-        parts.append(marked("circle", f'class="dot" cx="{sx(b):.2f}" cy="{y:.2f}" r="5" fill="{S2}"', t))
+        t = (
+            f"{name}: gap {a:+.3f} early, {b:+.3f} late; "
+            f"difference-in-differences {r['did']:+.3f} {r['did_ci']}"
+        )
+        parts.append(
+            marked(
+                "circle", f'class="dot" cx="{sx(a):.2f}" cy="{y:.2f}" r="4.5" fill="{SEQ2_DIM}"', t
+            )
+        )
+        parts.append(
+            marked("circle", f'class="dot" cx="{sx(b):.2f}" cy="{y:.2f}" r="5" fill="{S2}"', t)
+        )
         parts.append(
             f'<text class="cat{" emph" if is_all else ""}" x="{box.x0 - 10:.2f}" '
             f'y="{y + 4:.2f}" text-anchor="end">{esc(name)}</text>'
         )
-        parts.append(
-            f'<text class="dlabel" x="{sx(b) + 9:.2f}" y="{y + 4:.2f}">{b:+.2f}</text>'
-        )
+        parts.append(f'<text class="dlabel" x="{sx(b) + 9:.2f}" y="{y + 4:.2f}">{b:+.2f}</text>')
         rows.append([name, f"{a:+.4f}", f"{b:+.4f}", f"{r['did']:+.4f}", r["did_ci"]])
     parts.append(
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">P(plays next | high hope) − P(plays next | low hope)</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="Difference in differences by diagnosis">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="Difference in differences by diagnosis">{"".join(parts)}</svg>'
+    )
     return figure(
         "The gap does not exist early in the season. It opens late.",
         "Difference in return probability between players on high-hope and low-hope "
@@ -387,17 +435,19 @@ def fig_event_study(es: pl.DataFrame) -> str:
     hi_y = float(es["ci_hi"].max()) * 1.1
     sx = lambda v: box.x0 + ((v - lo_x) / (hi_x - lo_x)) * box.iw
     sy = lambda p: box.y1 - (p / hi_y) * box.ih
-    parts = [grid_y(box, nice_ticks(0, hi_y, 4), sy, 2),
-             grid_x(box, [-12, -6, 0, 6, 12], sx)]
-    up = " ".join(f"{'M' if i == 0 else 'L'}{sx(r['games_rel_elimination'] + 1.5):.2f},{sy(r['ci_hi']):.2f}"
-                  for i, r in enumerate(es.iter_rows(named=True)))
-    dn = " ".join(f"L{sx(r['games_rel_elimination'] + 1.5):.2f},{sy(r['ci_lo']):.2f}"
-                  for r in reversed(list(es.iter_rows(named=True))))
+    parts = [grid_y(box, nice_ticks(0, hi_y, 4), sy, 2), grid_x(box, [-12, -6, 0, 6, 12], sx)]
+    up = " ".join(
+        f"{'M' if i == 0 else 'L'}{sx(r['games_rel_elimination'] + 1.5):.2f},{sy(r['ci_hi']):.2f}"
+        for i, r in enumerate(es.iter_rows(named=True))
+    )
+    dn = " ".join(
+        f"L{sx(r['games_rel_elimination'] + 1.5):.2f},{sy(r['ci_lo']):.2f}"
+        for r in reversed(list(es.iter_rows(named=True)))
+    )
     parts.append(f'<path class="band" d="{up} {dn} Z" fill="{S2}"/>')
     pts = [(r["games_rel_elimination"] + 1.5, r["p_return"]) for r in es.iter_rows(named=True)]
     path = " ".join(
-        f"{'M' if i == 0 else 'L'}{sx(x):.2f},{sy(p):.2f}"
-        for i, (x, p) in enumerate(pts)
+        f"{'M' if i == 0 else 'L'}{sx(x):.2f},{sy(p):.2f}" for i, (x, p) in enumerate(pts)
     )
     parts.append(f'<path class="line" stroke="{S2}" d="{path}"/>')
     parts.append(
@@ -406,23 +456,35 @@ def fig_event_study(es: pl.DataFrame) -> str:
     parts.append(
         f'<text class="dlabel" x="{sx(0) + 6:.2f}" y="{box.y0 + 12:.2f}">eliminated</text>'
     )
-    pre_mean = float(
-        es.filter(pl.col("games_rel_elimination") < 0)["p_return"].mean()
-    )
+    pre_mean = float(es.filter(pl.col("games_rel_elimination") < 0)["p_return"].mean())
     rows = []
     for r in es.iter_rows(named=True):
         x, p = r["games_rel_elimination"] + 1.5, r["p_return"]
-        t = (f'{r["games_rel_elimination"]} to {r["games_rel_elimination"] + 2} games: '
-             f'{p:.1%} [{r["ci_lo"]:.1%}, {r["ci_hi"]:.1%}] (n={r["n_rows"]:,})')
-        parts.append(marked("circle", f'class="dot" cx="{sx(x):.2f}" cy="{sy(p):.2f}" r="4.5" fill="{S2}"', t))
-        rows.append([f"{r['games_rel_elimination']} to {r['games_rel_elimination'] + 2}",
-                     f"{r['n_rows']:,}", f"{p:.4f}", f"[{r['ci_lo']:.3f}, {r['ci_hi']:.3f}]"])
+        t = (
+            f"{r['games_rel_elimination']} to {r['games_rel_elimination'] + 2} games: "
+            f"{p:.1%} [{r['ci_lo']:.1%}, {r['ci_hi']:.1%}] (n={r['n_rows']:,})"
+        )
+        parts.append(
+            marked(
+                "circle", f'class="dot" cx="{sx(x):.2f}" cy="{sy(p):.2f}" r="4.5" fill="{S2}"', t
+            )
+        )
+        rows.append(
+            [
+                f"{r['games_rel_elimination']} to {r['games_rel_elimination'] + 2}",
+                f"{r['n_rows']:,}",
+                f"{p:.4f}",
+                f"[{r['ci_lo']:.3f}, {r['ci_hi']:.3f}]",
+            ]
+        )
     parts.append(
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">team games relative to mathematical elimination</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="Event study around elimination">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="Event study around elimination">{"".join(parts)}</svg>'
+    )
     return figure(
         "Flat before elimination, falling after",
         "Return probability by team games either side of the date a team could no "
@@ -461,13 +523,15 @@ def fig_debias(deb: pl.DataFrame) -> str:
     for i, r in enumerate(d.iter_rows(named=True)):
         y = box.y0 + i * rowh + (rowh - 16) / 2
         share, v = float(r["share"]), float(r["delta"])
-        parts.append(marked(
-            "path",
-            f'd="{hbar(box.x0, sx(share), y, 16)}" fill="{SEQ}"',
-            f'{r["ailment_class"]}: {r["games_as_observed"]:.2f} games as observed, '
-            f'{r["games_neutral"]:.2f} at neutral urgency — {share:.1%} of its own '
-            f'length is the team\'s situation (n={r["n"]:,})',
-        ))
+        parts.append(
+            marked(
+                "path",
+                f'd="{hbar(box.x0, sx(share), y, 16)}" fill="{SEQ}"',
+                f"{r['ailment_class']}: {r['games_as_observed']:.2f} games as observed, "
+                f"{r['games_neutral']:.2f} at neutral urgency — {share:.1%} of its own "
+                f"length is the team's situation (n={r['n']:,})",
+            )
+        )
         parts.append(
             f'<text class="cat" x="{box.x0 - 10:.2f}" y="{y + 12:.2f}" '
             f'text-anchor="end">{esc(r["ailment_class"].replace("_", " "))}</text>'
@@ -476,14 +540,24 @@ def fig_debias(deb: pl.DataFrame) -> str:
             f'<text class="dlabel" x="{sx(share) + 9:.2f}" y="{y + 12:.2f}">'
             f'{share:.0%} <tspan class="cat">({v:+.2f} games)</tspan></text>'
         )
-        rows.append([r["ailment_class"], f"{r['n']:,}", f"{r['games_as_observed']:.2f}",
-                     f"{r['games_neutral']:.2f}", f"{v:+.2f}", f"{share:.1%}"])
+        rows.append(
+            [
+                r["ailment_class"],
+                f"{r['n']:,}",
+                f"{r['games_as_observed']:.2f}",
+                f"{r['games_neutral']:.2f}",
+                f"{v:+.2f}",
+                f"{share:.1%}",
+            ]
+        )
     parts.append(
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">share of the absence attributable to the team\'s situation</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="De-biasing effect by ailment">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="De-biasing effect by ailment">{"".join(parts)}</svg>'
+    )
     top = d.row(0, named=True)
     bot = d.sort("share").row(0, named=True)
     return figure(
@@ -522,13 +596,15 @@ def fig_day_calibration(cal: list[dict]) -> str:
         )
         parts.append(f'<path class="line" d="{path}" stroke="{colour}"/>')
         for c in cal:
-            parts.append(marked(
-                "circle",
-                f'class="dot" cx="{sx(c["horizon_days"]):.2f}" '
-                f'cy="{sy(c[key]):.2f}" r="4.5" fill="{colour}"',
-                f'within {c["horizon_days"]} days — {label.lower()} {c[key]:.1%} '
-                f'(n={c["n_evaluable"]:,})',
-            ))
+            parts.append(
+                marked(
+                    "circle",
+                    f'class="dot" cx="{sx(c["horizon_days"]):.2f}" '
+                    f'cy="{sy(c[key]):.2f}" r="4.5" fill="{colour}"',
+                    f"within {c['horizon_days']} days — {label.lower()} {c[key]:.1%} "
+                    f"(n={c['n_evaluable']:,})",
+                )
+            )
         last = cal[-1]
         parts.append(
             f'<text class="dlabel" x="{sx(last["horizon_days"]) - 6:.2f}" '
@@ -544,8 +620,10 @@ def fig_day_calibration(cal: list[dict]) -> str:
         f'<text class="axis-t" x="{box.x0 + box.iw / 2:.2f}" y="{box.height - 4:.2f}" '
         f'text-anchor="middle">days from being ruled out</text>'
     )
-    svg = f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '\
-          f'aria-label="Calibration of availability by day">{"".join(parts)}</svg>'
+    svg = (
+        f'<svg viewBox="0 0 {box.width} {box.height}" role="img" '
+        f'aria-label="Calibration of availability by day">{"".join(parts)}</svg>'
+    )
     return figure(
         "“Will he be available by then?” is answerable. “How many days?” mostly is not.",
         "Predicted against realised probability the player is back within D days, "
@@ -558,8 +636,16 @@ def fig_day_calibration(cal: list[dict]) -> str:
         legend([("predicted", S1), ("realised", S2)]),
         details_table(
             ["horizon (days)", "evaluable spells", "predicted", "realised", "Brier skill"],
-            [[c["horizon_days"], f"{c['n_evaluable']:,}", f"{c['mean_pred']:.3f}",
-              f"{c['actual_rate']:.3f}", f"{c['brier_skill']:.3f}"] for c in cal],
+            [
+                [
+                    c["horizon_days"],
+                    f"{c['n_evaluable']:,}",
+                    f"{c['mean_pred']:.3f}",
+                    f"{c['actual_rate']:.3f}",
+                    f"{c['brier_skill']:.3f}",
+                ]
+                for c in cal
+            ],
         ),
     )
 
@@ -722,16 +808,18 @@ def main() -> None:
     state = (
         rows_df.join(inc, on=["season", "game_date", "team_slug"], how="inner")
         .group_by("incentive_state")
-        .agg(pl.len().alias("rows"), pl.col("spell_id").n_unique().alias("spells"),
-             pl.col("returns_next").mean().alias("p"))
+        .agg(
+            pl.len().alias("rows"),
+            pl.col("spell_id").n_unique().alias("spells"),
+            pl.col("returns_next").mean().alias("p"),
+        )
     )
 
     d, e = sp["games_missed"].to_numpy(), sp["event"].to_numpy()
     km_mean, naive = hz.km_mean(d, e), float(d[e == 1].mean())
 
     day_cal = [
-        {k: (int(v) if k in ("horizon_days", "n_evaluable") else float(v))
-         for k, v in r.items()}
+        {k: (int(v) if k in ("horizon_days", "n_evaluable") else float(v)) for k, v in r.items()}
         for r in pl.read_csv(rep / "day_horizon_calibration.csv").iter_rows(named=True)
     ]
 
@@ -740,35 +828,67 @@ def main() -> None:
     kmbase = med.filter(pl.col("model") == "km by region x ailment x status").row(0, named=True)
     blind = med.filter(pl.col("model").str.contains("observed spells only")).row(0, named=True)
 
-    kpis = "".join([
-        stat(f"{sp.height:,}", "injury spells", "2021-22 to 2025-26"),
-        stat(f"{1 - float(sp['event'].mean()):.0%}", "never show a return",
-             "season end, trade, G League"),
-        stat(f"{km_mean:.1f}", "mean games missed",
-             f"{naive:.1f} if censoring is ignored"),
-        stat(f"{best['c_index']:.3f}", "C-index, held-out season",
-             f"{kmbase['c_index']:.3f} for the best lookup table"),
-    ])
+    kpis = "".join(
+        [
+            stat(f"{sp.height:,}", "injury spells", "2021-22 to 2025-26"),
+            stat(
+                f"{1 - float(sp['event'].mean()):.0%}",
+                "never show a return",
+                "season end, trade, G League",
+            ),
+            stat(f"{km_mean:.1f}", "mean games missed", f"{naive:.1f} if censoring is ignored"),
+            stat(
+                f"{best['c_index']:.3f}",
+                "C-index, held-out season",
+                f"{kmbase['c_index']:.3f} for the best lookup table",
+            ),
+        ]
+    )
 
     model_rows = [
-        ["Flat Kaplan-Meier median", "—", f"{med.filter(pl.col('model') == 'km global').row(0, named=True)['mae_observed']:.2f}",
-         f"{med.filter(pl.col('model') == 'km global').row(0, named=True)['mae_observed_long']:.2f}", "0.500"],
-        ["Lookup: region x ailment x status", "—", f"{kmbase['mae_observed']:.2f}",
-         f"{kmbase['mae_observed_long']:.2f}", f"{kmbase['c_index']:.3f}"],
-        ["LightGBM, censoring-blind", "observed spells only",
-         f"{blind['mae_observed']:.2f}", f"{blind['mae_observed_long']:.2f}",
-         f"{blind['c_index']:.3f}"],
-        ["Hazard, HistGradientBoosting", "all spells",
-         f"{best['mae_observed']:.2f}", f"{best['mae_observed_long']:.2f}",
-         f"{best['c_index']:.3f}"],
+        [
+            "Flat Kaplan-Meier median",
+            "—",
+            f"{med.filter(pl.col('model') == 'km global').row(0, named=True)['mae_observed']:.2f}",
+            f"{med.filter(pl.col('model') == 'km global').row(0, named=True)['mae_observed_long']:.2f}",
+            "0.500",
+        ],
+        [
+            "Lookup: region x ailment x status",
+            "—",
+            f"{kmbase['mae_observed']:.2f}",
+            f"{kmbase['mae_observed_long']:.2f}",
+            f"{kmbase['c_index']:.3f}",
+        ],
+        [
+            "LightGBM, censoring-blind",
+            "observed spells only",
+            f"{blind['mae_observed']:.2f}",
+            f"{blind['mae_observed_long']:.2f}",
+            f"{blind['c_index']:.3f}",
+        ],
+        [
+            "Hazard, HistGradientBoosting",
+            "all spells",
+            f"{best['mae_observed']:.2f}",
+            f"{best['mae_observed_long']:.2f}",
+            f"{best['c_index']:.3f}",
+        ],
     ]
     pg_rows = [
         [r["model"], f"{r['auc']:.4f}", f"{r['log_loss']:.4f}", f"{r['brier_skill']:.3f}"]
         for r in pg.iter_rows(named=True)
     ]
     comp_rows = [
-        [r["model"], r["n_features"], f"{r['log_loss']:.4f}", f"{r['auc']:.4f}",
-         f"{r['log_loss_late']:.4f}", f"{r['auc_late']:.4f}", f"{r['c_index']:.4f}"]
+        [
+            r["model"],
+            r["n_features"],
+            f"{r['log_loss']:.4f}",
+            f"{r['auc']:.4f}",
+            f"{r['log_loss_late']:.4f}",
+            f"{r['auc_late']:.4f}",
+            f"{r['c_index']:.4f}",
+        ]
         for r in comp.iter_rows(named=True)
     ]
 
@@ -804,7 +924,7 @@ misses the game being scored as a <em>return</em>, which truncated 896 spells.</
 {fig_survival(sp)}
 
 <div class="callout"><strong>Censoring is the whole ballgame.</strong>
-{1 - float(sp['event'].mean()):.0%} of spells never show a return, and they are
+{1 - float(sp["event"].mean()):.0%} of spells never show a return, and they are
 the long ones. Any analysis that drops or truncates them is describing a league
 in which nobody misses forty games.</div>
 
@@ -840,15 +960,20 @@ seventy-two.</p>
 <em>k</em> = <em>m</em> only when the return was observed, so a censored spell
 contributes its <em>m</em> “still out” rows and no “came back” row. That is
 exactly the information it carries, and it is why all {sp.height:,} spells are
-usable: {diag['hazard_rows']:,} training rows.</p>
+usable: {diag["hazard_rows"]:,} training rows.</p>
 <p>Duration then falls out as a product over the per-game hazards. Days are
 converted from the same hazards using the team's real calendar rather than
 modelled directly — a player returns <em>for a game</em>, not on an arbitrary
 Tuesday, and gaps run from one to seven days, so a daily hazard would be mostly
 structural zeros dictated by the schedule.</p>
 
-{table(["model", "AUC", "log loss", "Brier skill"], pg_rows,
-       "Per-game return prediction, held-out 2025-26, 7,635 rows, base rate 0.166.")}
+{
+        table(
+            ["model", "AUC", "log loss", "Brier skill"],
+            pg_rows,
+            "Per-game return prediction, held-out 2025-26, 7,635 rows, base rate 0.166.",
+        )
+    }
 
 <p>Boosted trees beat the forest and the linear model consistently; the two
 boosters are indistinguishable. Adding how the report has <em>moved</em> since
@@ -856,9 +981,13 @@ onset — a status softened from Out, a diagnosis re-filed — is worth about 1.
 AUC points, less than you would guess, because most long absences stay filed as
 “Out” right up to the night the player returns.</p>
 
-{table(["model", "trained on", "MAE (games)", "MAE on spells of 5+ games", "C-index"],
-       model_rows,
-       "Duration at the moment the player is ruled out, held-out 2025-26, median point estimate.")}
+{
+        table(
+            ["model", "trained on", "MAE (games)", "MAE on spells of 5+ games", "C-index"],
+            model_rows,
+            "Duration at the moment the player is ruled out, held-out 2025-26, median point estimate.",
+        )
+    }
 
 <div class="callout">The censoring-blind fit wins overall MAE and loses where it
 matters: worse on long spells and worse at ranking severity. Its MAE win is an
@@ -906,9 +1035,13 @@ that episode, or about tanking.</div>
 other way. Adding the incentive features changes held-out accuracy by nothing —
 not even late in the season, where the entire effect lives.</p>
 
-{table(["model", "features", "log loss", "AUC", "log loss (late)", "AUC (late)", "C-index"],
-       comp_rows,
-       "“Late” means spells starting past 80% of the season.")}
+{
+        table(
+            ["model", "features", "log loss", "AUC", "log loss (late)", "AUC (late)", "C-index"],
+            comp_rows,
+            "“Late” means spells starting past 80% of the season.",
+        )
+    }
 
 <p><code>team_win_pct_before</code> and <code>season_progress</code> were already
 in the feature set and already proxy the incentive well enough to forecast with.

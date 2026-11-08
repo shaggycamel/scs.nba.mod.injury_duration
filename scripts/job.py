@@ -63,8 +63,15 @@ def parse_kickoff() -> datetime:
     return datetime.now(UTC)
 
 
-def log_run(kickoff: datetime, cadence: str, source: str, success: bool,
-            error: str | None, row_count: int | None, db_con: str) -> None:
+def log_run(
+    kickoff: datetime,
+    cadence: str,
+    source: str,
+    success: bool,
+    error: str | None,
+    row_count: int | None,
+    db_con: str,
+) -> None:
     import scs_hub
 
     hub = scs_hub.SportsHub(db_con=db_con)
@@ -105,39 +112,80 @@ def main(argv: list[str] | None = None) -> int:
         if not args.model.exists():
             raise FileNotFoundError(f"missing model bundle: {args.model}")
 
-        run("active spells", [
-            "scripts/18_active_spells.py", "--season", season,
-            "--db-con", args.db_con, "--data", str(active_data),
-            "--out", str(active_file),
-        ])
-        run("lean fetch", [
-            "scripts/16_lean_fetch.py", "--players-file", str(active_file),
-            "--season", season, "--out", str(lean_data),
-            "--db-con", args.db_con,
-        ])
+        run(
+            "active spells",
+            [
+                "scripts/18_active_spells.py",
+                "--season",
+                season,
+                "--db-con",
+                args.db_con,
+                "--data",
+                str(active_data),
+                "--out",
+                str(active_file),
+            ],
+        )
+        run(
+            "lean fetch",
+            [
+                "scripts/16_lean_fetch.py",
+                "--players-file",
+                str(active_file),
+                "--season",
+                season,
+                "--out",
+                str(lean_data),
+                "--db-con",
+                args.db_con,
+            ],
+        )
         lean_env = {**base_env, "INJURY_DURATION_DATA": str(lean_data)}
-        run("build", [
-            "scripts/01_build.py",
-            "--diagnostics-out", str(ROOT / "artifacts/lean_current_diagnostics.json"),
-        ], env=lean_env)
-        run("predict", [
-            "scripts/19_daily_predict.py", "--season", season,
-            "--model", str(args.model), "--active", str(active_file),
-            "--out", str(daily_file),
-        ], env=lean_env)
+        run(
+            "build",
+            [
+                "scripts/01_build.py",
+                "--diagnostics-out",
+                str(ROOT / "artifacts/lean_current_diagnostics.json"),
+            ],
+            env=lean_env,
+        )
+        run(
+            "predict",
+            [
+                "scripts/19_daily_predict.py",
+                "--season",
+                season,
+                "--model",
+                str(args.model),
+                "--active",
+                str(active_file),
+                "--out",
+                str(daily_file),
+            ],
+            env=lean_env,
+        )
         rows = pl.read_parquet(daily_file).height
-        run("publish", [
-            "scripts/15_publish_daily.py", "--input", str(daily_file),
-            "--season", season, "--append", "--db-con", args.db_con,
-        ], env=base_env)
+        run(
+            "publish",
+            [
+                "scripts/15_publish_daily.py",
+                "--input",
+                str(daily_file),
+                "--season",
+                season,
+                "--append",
+                "--db-con",
+                args.db_con,
+            ],
+            env=base_env,
+        )
     except Exception as exc:  # noqa: BLE001 - the runner needs one failure row
         error = f"{type(exc).__name__}: {exc}"
         print(f"failed: {error}", file=sys.stderr, flush=True)
 
     if result_file:
-        Path(result_file).write_text(
-            json.dumps({"row_count": rows if error is None else 0}) + "\n"
-        )
+        Path(result_file).write_text(json.dumps({"row_count": rows if error is None else 0}) + "\n")
     else:
         log_run(kickoff, args.cadence, args.source, error is None, error, rows, args.db_con)
     return 0 if error is None else 1

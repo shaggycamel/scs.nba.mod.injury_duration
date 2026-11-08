@@ -50,25 +50,24 @@ def main() -> None:
     if feats.is_empty():
         raise SystemExit(f"no spells for {args.season!r} in the build")
 
-    onset = forecast.forecast_at_onset(
-        bundle.onset, feats, d["team_context"], max_k=args.max_k
-    )
+    onset = forecast.forecast_at_onset(bundle.onset, feats, d["team_context"], max_k=args.max_k)
     out = args.out or Path(f"artifacts/forecasts_{args.season}.parquet")
     out.parent.mkdir(parents=True, exist_ok=True)
     onset.write_parquet(out)
 
-    rows = ex.hazard_design(d["rows"], d["features"]).filter(
-        pl.col("season") == args.season
-    )
+    rows = ex.hazard_design(d["rows"], d["features"]).filter(pl.col("season") == args.season)
     live = forecast.forecast_in_progress(bundle.live, rows)
     live_out = out.with_name(out.stem + "_next_game.parquet")
     live.write_parquet(live_out)
 
-    print(f"loaded {args.model}  (trained {bundle.metadata['seasons'][0]}.."
-          f"{bundle.metadata['seasons'][-1]})")
+    print(
+        f"loaded {args.model}  (trained {bundle.metadata['seasons'][0]}.."
+        f"{bundle.metadata['seasons'][-1]})"
+    )
     if args.season <= bundle.metadata["seasons"][-1]:
-        print(f"note: {args.season} is inside the training window; "
-              "this is an in-sample demonstration")
+        print(
+            f"note: {args.season} is inside the training window; this is an in-sample demonstration"
+        )
     print(f"{args.season}: {onset.height:,} spells -> {out}")
     print(f"{args.season}: {live.height:,} per-game rows -> {live_out}")
     print()

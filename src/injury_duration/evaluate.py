@@ -30,9 +30,7 @@ from . import hazard as hz
 HORIZONS = (1, 3, 5, 10, 20)
 
 
-def duration_metrics(
-    spells: pl.DataFrame, pred: np.ndarray, label: str = ""
-) -> dict:
+def duration_metrics(spells: pl.DataFrame, pred: np.ndarray, label: str = "") -> dict:
     """Score a per-spell prediction of games missed."""
     d = spells["games_missed"].to_numpy().astype(float)
     e = spells["event"].to_numpy().astype(int)
@@ -73,9 +71,7 @@ def duration_metrics(
     return out
 
 
-def horizon_brier(
-    spells: pl.DataFrame, surv: dict[int, np.ndarray], label: str = ""
-) -> list[dict]:
+def horizon_brier(spells: pl.DataFrame, surv: dict[int, np.ndarray], label: str = "") -> list[dict]:
     """Brier score for P(still out after h games) from a survival model."""
     d = spells["games_missed"].to_numpy().astype(float)
     e = spells["event"].to_numpy().astype(int)
@@ -113,7 +109,9 @@ def hazard_row_metrics(y: np.ndarray, p: np.ndarray, label: str = "") -> dict:
         "return_rate": float(y.mean()),
         "auc": float(roc_auc_score(y, p)) if 0 < y.mean() < 1 else float("nan"),
         "log_loss": float(log_loss(y, p, labels=[0, 1])),
-        "log_loss_skill": float(1 - log_loss(y, p, labels=[0, 1]) / log_loss(y, base, labels=[0, 1])),
+        "log_loss_skill": float(
+            1 - log_loss(y, p, labels=[0, 1]) / log_loss(y, base, labels=[0, 1])
+        ),
         "brier": float(brier_score_loss(y, p)),
         "brier_skill": float(1 - brier_score_loss(y, p) / brier_score_loss(y, base)),
     }
@@ -122,9 +120,7 @@ def hazard_row_metrics(y: np.ndarray, p: np.ndarray, label: str = "") -> dict:
 def calibration_table(y: np.ndarray, p: np.ndarray, bins: int = 10) -> pl.DataFrame:
     """Predicted vs realised return rate, in equal-count bins."""
     df = pl.DataFrame({"y": np.asarray(y, dtype=float), "p": np.asarray(p, dtype=float)})
-    df = df.with_columns(
-        pl.col("p").rank("ordinal").alias("_r")
-    ).with_columns(
+    df = df.with_columns(pl.col("p").rank("ordinal").alias("_r")).with_columns(
         ((pl.col("_r") - 1) * bins // pl.len()).alias("bin")
     )
     return (

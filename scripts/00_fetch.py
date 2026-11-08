@@ -27,18 +27,51 @@ import scs_hub
 from injury_duration import paths
 
 PLAYER_INFO_COLUMNS = [
-    "season", "player_id", "first_name", "last_name", "player_slug", "birthdate",
-    "school", "country", "last_affiliation", "height_cm", "weight_kg",
-    "season_exp", "jersey", "position", "rosterstatus",
-    "games_played_current_season_flag", "team_id", "team_name",
-    "team_abbreviation", "team_code", "team_city", "playercode",
-    "from_year", "to_year", "dleague_flag", "nba_flag", "games_played_flag",
-    "draft_year", "draft_round", "draft_number", "greatest_75_flag",
+    "season",
+    "player_id",
+    "first_name",
+    "last_name",
+    "player_slug",
+    "birthdate",
+    "school",
+    "country",
+    "last_affiliation",
+    "height_cm",
+    "weight_kg",
+    "season_exp",
+    "jersey",
+    "position",
+    "rosterstatus",
+    "games_played_current_season_flag",
+    "team_id",
+    "team_name",
+    "team_abbreviation",
+    "team_code",
+    "team_city",
+    "playercode",
+    "from_year",
+    "to_year",
+    "dleague_flag",
+    "nba_flag",
+    "games_played_flag",
+    "draft_year",
+    "draft_round",
+    "draft_number",
+    "greatest_75_flag",
 ]
 
 TEAMS_COLUMNS = [
-    "team_id", "team_slug", "team_long", "team_name", "conference", "division",
-    "first_season", "last_season", "stadium", "stadium_capacity", "active",
+    "team_id",
+    "team_slug",
+    "team_long",
+    "team_name",
+    "conference",
+    "division",
+    "first_season",
+    "last_season",
+    "stadium",
+    "stadium_capacity",
+    "active",
 ]
 
 
@@ -68,8 +101,7 @@ def main() -> None:
     hub = scs_hub.SportsHub(db_con=args.db_con)
 
     cutoff = hub.db.read(
-        "SELECT max(game_date) AS d FROM nba.league_game_schedule "
-        f"WHERE season = '{args.through}'"
+        f"SELECT max(game_date) AS d FROM nba.league_game_schedule WHERE season = '{args.through}'"
     )["d"][0]
     if cutoff is None:
         raise SystemExit(f"no games found for season {args.through!r}")

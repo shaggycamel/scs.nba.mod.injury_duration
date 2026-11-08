@@ -66,14 +66,23 @@ def main() -> None:
     feats = d["features"]
 
     inc = standings.playin_probability().select(
-        "season", "game_date", "team_slug", "playin_probability",
-        "incentive_state", "games_since_elimination",
+        "season",
+        "game_date",
+        "team_slug",
+        "playin_probability",
+        "incentive_state",
+        "games_since_elimination",
     )
     r = rows.join(inc, on=["season", "game_date", "team_slug"], how="left")
     r = r.join(
         feats.select(
-            "spell_id", "season_progress", "ailment_class", "body_region",
-            "min_roll5", "hope_at_onset", "team_games_before",
+            "spell_id",
+            "season_progress",
+            "ailment_class",
+            "body_region",
+            "min_roll5",
+            "hope_at_onset",
+            "team_games_before",
         ),
         on="spell_id",
         how="left",
@@ -95,24 +104,34 @@ def main() -> None:
     for key, grp in ev.group_by("bucket"):
         y = grp["returns_next"].to_numpy().astype(float)
         lo, hi = boot_ci(y)
-        es_rows.append({
-            "games_rel_elimination": int(key[0]), "n_rows": grp.height,
-            "p_return": round(float(y.mean()), 4),
-            "ci_lo": round(lo, 4), "ci_hi": round(hi, 4),
-        })
+        es_rows.append(
+            {
+                "games_rel_elimination": int(key[0]),
+                "n_rows": grp.height,
+                "p_return": round(float(y.mean()), 4),
+                "ci_lo": round(lo, 4),
+                "ci_hi": round(hi, 4),
+            }
+        )
     es = pl.DataFrame(es_rows).sort("games_rel_elimination")
     for row in es.iter_rows(named=True):
         bar = "#" * int(row["p_return"] * 300)
         tag = "  <- eliminated" if row["games_rel_elimination"] == 0 else ""
-        print(f"  {row['games_rel_elimination']:>4} to {row['games_rel_elimination']+2:>3}  "
-              f"n={row['n_rows']:>4}  {row['p_return']:.3f} "
-              f"[{row['ci_lo']:.3f},{row['ci_hi']:.3f}] {bar}{tag}")
+        print(
+            f"  {row['games_rel_elimination']:>4} to {row['games_rel_elimination'] + 2:>3}  "
+            f"n={row['n_rows']:>4}  {row['p_return']:.3f} "
+            f"[{row['ci_lo']:.3f},{row['ci_hi']:.3f}] {bar}{tag}"
+        )
     es.write_csv(rep / "elimination_event_study.csv")
     pre = ev.filter(pl.col("games_since_elimination") < 0)["returns_next"].to_numpy().astype(float)
-    post = ev.filter(pl.col("games_since_elimination") >= 0)["returns_next"].to_numpy().astype(float)
+    post = (
+        ev.filter(pl.col("games_since_elimination") >= 0)["returns_next"].to_numpy().astype(float)
+    )
     dd, lo, hi = diff_ci(post, pre)
-    print(f"\n  post minus pre: {dd:+.4f} [{lo:+.4f}, {hi:+.4f}]  "
-          f"(n_pre={len(pre)}, n_post={len(post)})")
+    print(
+        f"\n  post minus pre: {dd:+.4f} [{lo:+.4f}, {hi:+.4f}]  "
+        f"(n_pre={len(pre)}, n_post={len(post)})"
+    )
     print("  The pre-period is flat and the post-period declines, so there is a")
     print("  level shift at elimination after all. Read at one-game resolution")
     print("  the pre-period looks like it is already falling; that was noise.")
@@ -127,10 +146,14 @@ def main() -> None:
     print("=" * 78)
     dr = r.filter(pl.col("playin_probability").is_not_null()).with_columns(
         (pl.col("playin_probability") * 5).floor().clip(0, 4).cast(pl.Int32).alias("hope_q"),
-        pl.when(pl.col("games_missed_so_far") == 1).then(pl.lit("k=1"))
-        .when(pl.col("games_missed_so_far") <= 3).then(pl.lit("k=2-3"))
-        .when(pl.col("games_missed_so_far") <= 10).then(pl.lit("k=4-10"))
-        .otherwise(pl.lit("k=11+")).alias("k"),
+        pl.when(pl.col("games_missed_so_far") == 1)
+        .then(pl.lit("k=1"))
+        .when(pl.col("games_missed_so_far") <= 3)
+        .then(pl.lit("k=2-3"))
+        .when(pl.col("games_missed_so_far") <= 10)
+        .then(pl.lit("k=4-10"))
+        .otherwise(pl.lit("k=11+"))
+        .alias("k"),
     )
     tab = (
         dr.group_by("k", "hope_q")
@@ -151,12 +174,18 @@ def main() -> None:
     did = r.filter(
         (pl.col("min_roll5") >= ROTATION_MIN) & (pl.col("games_missed_so_far") <= 10)
     ).with_columns(
-        pl.when(pl.col("hope_at_onset") < 0.25).then(pl.lit("low"))
-        .when(pl.col("hope_at_onset") > 0.75).then(pl.lit("high"))
-        .otherwise(pl.lit("mid")).alias("hope_grp"),
-        pl.when(pl.col("season_progress") > 0.80).then(pl.lit("late"))
-        .when(pl.col("season_progress") < 0.50).then(pl.lit("early"))
-        .otherwise(pl.lit("mid")).alias("period"),
+        pl.when(pl.col("hope_at_onset") < 0.25)
+        .then(pl.lit("low"))
+        .when(pl.col("hope_at_onset") > 0.75)
+        .then(pl.lit("high"))
+        .otherwise(pl.lit("mid"))
+        .alias("hope_grp"),
+        pl.when(pl.col("season_progress") > 0.80)
+        .then(pl.lit("late"))
+        .when(pl.col("season_progress") < 0.50)
+        .then(pl.lit("early"))
+        .otherwise(pl.lit("mid"))
+        .alias("period"),
     )
     out = []
     for ail in ["soreness", "sprain", "strain", "management", "contusion", "ALL"]:
@@ -164,33 +193,44 @@ def main() -> None:
         cells = {}
         for period in ("early", "late"):
             for grp in ("low", "high"):
-                y = sub.filter(
-                    (pl.col("period") == period) & (pl.col("hope_grp") == grp)
-                )["returns_next"].to_numpy().astype(float)
+                y = (
+                    sub.filter((pl.col("period") == period) & (pl.col("hope_grp") == grp))[
+                        "returns_next"
+                    ]
+                    .to_numpy()
+                    .astype(float)
+                )
                 cells[(period, grp)] = y
         if min(len(v) for v in cells.values()) < 40:
             continue
         g_early, lo_e, hi_e = diff_ci(cells[("early", "high")], cells[("early", "low")])
         g_late, lo_l, hi_l = diff_ci(cells[("late", "high")], cells[("late", "low")])
         # DiD: how much the high-minus-low hope gap widens from early to late.
-        a = cells[("late", "high")]; b = cells[("late", "low")]
-        c = cells[("early", "high")]; e = cells[("early", "low")]
+        a = cells[("late", "high")]
+        b = cells[("late", "low")]
+        c = cells[("early", "high")]
+        e = cells[("early", "low")]
         da = RNG.choice(a, (N_BOOT, len(a)), replace=True).mean(axis=1)
         db = RNG.choice(b, (N_BOOT, len(b)), replace=True).mean(axis=1)
         dc = RNG.choice(c, (N_BOOT, len(c)), replace=True).mean(axis=1)
         de = RNG.choice(e, (N_BOOT, len(e)), replace=True).mean(axis=1)
         boot = (da - db) - (dc - de)
-        out.append({
-            "diagnosis": ail,
-            "n_late_low": len(b), "n_late_high": len(a),
-            "gap_early": round(g_early, 4), "gap_early_ci": f"[{lo_e:+.3f},{hi_e:+.3f}]",
-            "gap_late": round(g_late, 4), "gap_late_ci": f"[{lo_l:+.3f},{hi_l:+.3f}]",
-            "did": round(g_late - g_early, 4),
-            "did_ci": f"[{np.quantile(boot,0.025):+.3f},{np.quantile(boot,0.975):+.3f}]",
-            "did_excludes_zero": bool(
-                np.quantile(boot, 0.025) > 0 or np.quantile(boot, 0.975) < 0
-            ),
-        })
+        out.append(
+            {
+                "diagnosis": ail,
+                "n_late_low": len(b),
+                "n_late_high": len(a),
+                "gap_early": round(g_early, 4),
+                "gap_early_ci": f"[{lo_e:+.3f},{hi_e:+.3f}]",
+                "gap_late": round(g_late, 4),
+                "gap_late_ci": f"[{lo_l:+.3f},{hi_l:+.3f}]",
+                "did": round(g_late - g_early, 4),
+                "did_ci": f"[{np.quantile(boot, 0.025):+.3f},{np.quantile(boot, 0.975):+.3f}]",
+                "did_excludes_zero": bool(
+                    np.quantile(boot, 0.025) > 0 or np.quantile(boot, 0.975) < 0
+                ),
+            }
+        )
     didf = pl.DataFrame(out)
     print(didf)
     didf.write_csv(rep / "incentive_did.csv")
@@ -206,17 +246,25 @@ def main() -> None:
     print("not testable here. The PPP has two seasons before and three after.\n")
     pol = did.filter(pl.col("period") == "late")
     prows = []
-    for regime, cond in [("pre-PPP (2021-23)", ~pl.col("season").is_in(list(PPP_SEASONS))),
-                         ("post-PPP (2023-26)", pl.col("season").is_in(list(PPP_SEASONS)))]:
+    for regime, cond in [
+        ("pre-PPP (2021-23)", ~pl.col("season").is_in(list(PPP_SEASONS))),
+        ("post-PPP (2023-26)", pl.col("season").is_in(list(PPP_SEASONS))),
+    ]:
         sub = pol.filter(cond)
         a = sub.filter(pl.col("hope_grp") == "high")["returns_next"].to_numpy().astype(float)
         b = sub.filter(pl.col("hope_grp") == "low")["returns_next"].to_numpy().astype(float)
         g, lo, hi = diff_ci(a, b)
-        prows.append({
-            "regime": regime, "n_high": len(a), "n_low": len(b),
-            "p_high": round(float(a.mean()), 4), "p_low": round(float(b.mean()), 4),
-            "gap": round(g, 4), "gap_ci": f"[{lo:+.3f},{hi:+.3f}]",
-        })
+        prows.append(
+            {
+                "regime": regime,
+                "n_high": len(a),
+                "n_low": len(b),
+                "p_high": round(float(a.mean()), 4),
+                "p_low": round(float(b.mean()), 4),
+                "gap": round(g, 4),
+                "gap_ci": f"[{lo:+.3f},{hi:+.3f}]",
+            }
+        )
     pf = pl.DataFrame(prows)
     print(pf)
     pf.write_csv(rep / "policy_break.csv")

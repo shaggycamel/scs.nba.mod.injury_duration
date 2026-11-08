@@ -75,16 +75,20 @@ def main() -> None:
     trace = forecast.forecast_in_progress(live, target_rows)
     for row in long_spells.iter_rows(named=True):
         print(f"\n{row['player_name']}  {row['index_reason']}")
-        print(f"  ruled out {row['start_date']}, forecast at onset: "
-              f"median {row['pred_median_games']:.0f} games, "
-              f"mean {row['pred_mean_games']:.1f}; actual {row['games_missed']}")
+        print(
+            f"  ruled out {row['start_date']}, forecast at onset: "
+            f"median {row['pred_median_games']:.0f} games, "
+            f"mean {row['pred_mean_games']:.1f}; actual {row['games_missed']}"
+        )
         t = trace.filter(pl.col("spell_id") == row["spell_id"]).sort("games_missed_so_far")
         for r in t.iter_rows(named=True):
             bar = "#" * int(r["p_plays_next"] * 60)
             flag = "  <- played" if r["returns_next"] == 1 else ""
-            print(f"    after {r['games_missed_so_far']:>3} missed "
-                  f"({r['game_date']}, {r['status_clean'] or 'not listed':<12}) "
-                  f"p={r['p_plays_next']:.3f} {bar}{flag}")
+            print(
+                f"    after {r['games_missed_so_far']:>3} missed "
+                f"({r['game_date']}, {r['status_clean'] or 'not listed':<12}) "
+                f"p={r['p_plays_next']:.3f} {bar}{flag}"
+            )
 
     # Day-horizon calibration, written out so the HTML report quotes measured
     # numbers rather than a copy of them.
@@ -96,13 +100,18 @@ def main() -> None:
         y = (dur[mask] <= dh).astype(int)
         pr = fc[f"p_back_within_{dh}d"].to_numpy()[mask]
         base = np.full_like(pr, y.mean())
-        cal_rows.append({
-            "horizon_days": dh, "n_evaluable": int(mask.sum()),
-            "actual_rate": round(float(y.mean()), 4),
-            "mean_pred": round(float(pr.mean()), 4),
-            "brier": round(float(np.mean((pr - y) ** 2)), 5),
-            "brier_skill": round(float(1 - np.mean((pr - y) ** 2) / np.mean((base - y) ** 2)), 4),
-        })
+        cal_rows.append(
+            {
+                "horizon_days": dh,
+                "n_evaluable": int(mask.sum()),
+                "actual_rate": round(float(y.mean()), 4),
+                "mean_pred": round(float(pr.mean()), 4),
+                "brier": round(float(np.mean((pr - y) ** 2)), 5),
+                "brier_skill": round(
+                    float(1 - np.mean((pr - y) ** 2) / np.mean((base - y) ** 2)), 4
+                ),
+            }
+        )
     pl.DataFrame(cal_rows).write_csv(rep / "day_horizon_calibration.csv")
     print("\nP(back within D days), held-out season:")
     print(pl.DataFrame(cal_rows))

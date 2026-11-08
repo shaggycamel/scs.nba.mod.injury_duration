@@ -48,15 +48,11 @@ def compare_frame(
             left = pl.col(col).cast(pl.Float64)
             r = right.cast(pl.Float64)
             bad = joined.filter(
-                (pl.col(col).is_null() != right.is_null())
-                | ((left - r).abs() > tolerance)
+                (pl.col(col).is_null() != right.is_null()) | ((left - r).abs() > tolerance)
             )
             diff = (left - r).abs().max()
             if bad.height:
-                problems.append(
-                    f"{col}: {bad.height}/{joined.height} differ "
-                    f"(max abs diff {diff})"
-                )
+                problems.append(f"{col}: {bad.height}/{joined.height} differ (max abs diff {diff})")
         else:
             bad = joined.filter(pl.col(col).ne_missing(right))
             if bad.height:
@@ -68,9 +64,11 @@ def main() -> None:
     args = parse_args()
     full_sp = pl.read_parquet(args.full / "spell_features.parquet")
     lean_sp = pl.read_parquet(args.lean / "spell_features.parquet")
-    target = pl.read_parquet(args.full / "spells.parquet").filter(
-        pl.col("season") == args.season
-    )["spell_id"].to_list()
+    target = (
+        pl.read_parquet(args.full / "spells.parquet")
+        .filter(pl.col("season") == args.season)["spell_id"]
+        .to_list()
+    )
     full_sp = full_sp.filter(pl.col("spell_id").is_in(target)).sort("spell_id")
     lean_sp = lean_sp.filter(pl.col("spell_id").is_in(target)).sort("spell_id")
 
@@ -88,8 +86,11 @@ def main() -> None:
         pl.col("spell_id").is_in(target)
     )
     print(f"hazard_rows:   full {full_rows.height:,}, lean {lean_rows.height:,}")
-    row_cols = [c for c in hz.TIME_VARYING + ["returns_next", "game_date", "game_id"]
-                if c in full_rows.columns and c in lean_rows.columns]
+    row_cols = [
+        c
+        for c in hz.TIME_VARYING + ["returns_next", "game_date", "game_id"]
+        if c in full_rows.columns and c in lean_rows.columns
+    ]
     problems += compare_frame(
         full_rows, lean_rows, ["spell_id", "spell_game_no"], row_cols, args.tolerance
     )

@@ -22,6 +22,7 @@ Three families:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -46,6 +47,7 @@ MEAN_GAP_DAYS = 2.3
 # Baselines
 # --------------------------------------------------------------------------
 
+
 @dataclass
 class KMBaseline:
     """Kaplan-Meier point estimate, optionally stratified, shrunk to the pool.
@@ -67,7 +69,7 @@ class KMBaseline:
     _global: float = 0.0
     _table: dict = field(default_factory=dict)
 
-    def _point(self, d, e) -> float:
+    def _point(self, d: np.ndarray, e: np.ndarray) -> float:
         return hz.km_mean(d, e) if self.statistic == "mean" else hz.km_median(d, e)
 
     def fit(self, spells: pl.DataFrame) -> KMBaseline:
@@ -100,9 +102,7 @@ class PlayerHistoryBaseline:
     _global: float = 0.0
 
     def fit(self, spells: pl.DataFrame) -> PlayerHistoryBaseline:
-        self._global = hz.km_mean(
-            spells["games_missed"].to_numpy(), spells["event"].to_numpy()
-        )
+        self._global = hz.km_mean(spells["games_missed"].to_numpy(), spells["event"].to_numpy())
         return self
 
     def predict(self, spells: pl.DataFrame) -> np.ndarray:
@@ -116,6 +116,7 @@ class PlayerHistoryBaseline:
 # --------------------------------------------------------------------------
 # Hazard models
 # --------------------------------------------------------------------------
+
 
 @dataclass
 class HazardModel:
@@ -142,15 +143,17 @@ class HazardModel:
     def uses_codes(self) -> bool:
         return self.kind in self.NATIVE_CATEGORICAL
 
-    def _build(self):
+    def _build(self) -> Any:
         if self.kind == "logistic":
             # Scaling is not optional here: the one-hot block sits next to
             # raw minute totals in the thousands, and an L2 penalty applied
             # to both on the same scale is not the model we asked for.
-            return Pipeline([
-                ("scale", StandardScaler()),
-                ("est", LogisticRegression(max_iter=3000, **self.params)),
-            ])
+            return Pipeline(
+                [
+                    ("scale", StandardScaler()),
+                    ("est", LogisticRegression(max_iter=3000, **self.params)),
+                ]
+            )
         if self.kind == "forest":
             return RandomForestClassifier(random_state=0, n_jobs=-1, **self.params)
         if self.kind == "histgb":
@@ -161,11 +164,14 @@ class HazardModel:
             import lightgbm as lgb
 
             return lgb.LGBMClassifier(
-                random_state=0, verbose=-1, n_jobs=-1,
+                random_state=0,
+                verbose=-1,
+                n_jobs=-1,
                 # Without these the multithreaded histogram build is not
                 # reproducible, and held-out log loss moves by enough
                 # between runs to flip the smallest ablation deltas.
-                deterministic=True, force_row_wise=True,
+                deterministic=True,
+                force_row_wise=True,
                 **self.params,
             )
         raise ValueError(f"unknown kind {self.kind!r}")
@@ -198,9 +204,7 @@ class HazardModel:
 DAY_HORIZONS = (7, 14, 21, 30, 60)
 
 
-def predict_from_grid(
-    model: HazardModel, grid: pl.DataFrame, max_k: int = MAX_K
-) -> pl.DataFrame:
+def predict_from_grid(model: HazardModel, grid: pl.DataFrame, max_k: int = MAX_K) -> pl.DataFrame:
     """Turn per-(spell, k) hazards into per-spell duration summaries.
 
     Reports duration in both games and days. Days are converted from the
@@ -225,14 +229,21 @@ def predict_from_grid(
         .with_columns(pl.Series("h", h))
         .sort("spell_id", "k")
         .with_columns(
-            (1.0 - pl.col("h").clip(1e-9, 1 - 1e-9)).log().cum_sum().over("spell_id")
-            .exp().alias("surv")
+            (1.0 - pl.col("h").clip(1e-9, 1 - 1e-9))
+            .log()
+            .cum_sum()
+            .over("spell_id")
+            .exp()
+            .alias("surv")
         )
         .with_columns(
             pl.col("surv").shift(1, fill_value=1.0).over("spell_id").alias("surv_prev"),
             # The date the player would be back if this is the last game missed.
-            pl.col("days_missed_so_far").shift(-1).over("spell_id")
-            .cast(pl.Float64).alias("return_days"),
+            pl.col("days_missed_so_far")
+            .shift(-1)
+            .over("spell_id")
+            .cast(pl.Float64)
+            .alias("return_days"),
         )
         .with_columns((pl.col("surv_prev") - pl.col("surv")).alias("p_return_here"))
     )
@@ -260,7 +271,9 @@ def predict_from_grid(
         pl.col("return_days").filter(pl.col("surv") <= 0.5).min().alias("pred_median_days"),
     ]
     aggs += [
-        pl.col("p_return_here").filter(pl.col("return_days") <= d).sum()
+        pl.col("p_return_here")
+        .filter(pl.col("return_days") <= d)
+        .sum()
         .alias(f"p_back_within_{d}d")
         for d in DAY_HORIZONS
     ]
@@ -282,6 +295,7 @@ def predict_from_grid(
 # --------------------------------------------------------------------------
 # Direct regression on observed duration (censoring-blind, for contrast)
 # --------------------------------------------------------------------------
+
 
 @dataclass
 class ObservedOnlyRegressor:
@@ -311,8 +325,14 @@ class ObservedOnlyRegressor:
         X, self._cat_idx, _ = self._design.codes(obs)
         extra = {"alpha": 0.5} if self.objective == "quantile" else {}
         self._model = lgb.LGBMRegressor(
-            objective=self.objective, random_state=0, verbose=-1, n_jobs=-1,
-            deterministic=True, force_row_wise=True, **extra, **self.params,
+            objective=self.objective,
+            random_state=0,
+            verbose=-1,
+            n_jobs=-1,
+            deterministic=True,
+            force_row_wise=True,
+            **extra,
+            **self.params,
         )
         self._model.fit(X, obs["games_missed"].to_numpy(), categorical_feature=self._cat_idx)
         return self

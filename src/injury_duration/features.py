@@ -47,7 +47,8 @@ def player_attributes() -> pl.DataFrame:
             pl.col("birthdate").cast(pl.String).str.slice(0, 10).str.to_date().alias("birthdate"),
             pl.col("height_cm").cast(pl.Float64),
             pl.col("weight_kg").cast(pl.Float64),
-            pl.col("position").replace_strict(POSITION_GROUPS, default="unknown")
+            pl.col("position")
+            .replace_strict(POSITION_GROUPS, default="unknown")
             .alias("position_group"),
             pl.col("draft_number").cast(pl.Int64, strict=False).alias("draft_number"),
             pl.col("draft_round").cast(pl.Int64, strict=False).alias("draft_round"),
@@ -115,11 +116,26 @@ def played_game_history() -> pl.DataFrame:
         .dt.total_days()
         .alias("rest_before_last_game"),
     ).select(
-        "player_id", "game_date", "season",
-        "career_games", "career_minutes", "season_games", "season_minutes",
-        "min_last", "min_roll3", "min_roll5", "min_roll10", "min_sd10",
-        "usg_roll5", "usg_roll10", "pace_roll5",
-        "min_7d", "min_14d", "min_30d", "games_7d", "games_14d",
+        "player_id",
+        "game_date",
+        "season",
+        "career_games",
+        "career_minutes",
+        "season_games",
+        "season_minutes",
+        "min_last",
+        "min_roll3",
+        "min_roll5",
+        "min_roll10",
+        "min_sd10",
+        "usg_roll5",
+        "usg_roll10",
+        "pace_roll5",
+        "min_7d",
+        "min_14d",
+        "min_30d",
+        "games_7d",
+        "games_14d",
         "rest_before_last_game",
     )
 
@@ -145,11 +161,9 @@ def team_context() -> pl.DataFrame:
         cal.sort("team_slug", "season", "team_game_idx")
         .with_columns(
             # Strictly prior games: this game's result is not known pre-tip.
-            pl.col("won").cum_sum().shift(1).over("team_slug", "season")
-            .alias("team_wins_before"),
+            pl.col("won").cum_sum().shift(1).over("team_slug", "season").alias("team_wins_before"),
             (pl.col("team_game_idx") - 1).alias("team_games_before"),
-            pl.col("team_game_idx").max().over("team_slug", "season")
-            .alias("team_games_total"),
+            pl.col("team_game_idx").max().over("team_slug", "season").alias("team_games_total"),
             pl.col("team_game_idx")
             .filter(pl.col("season_type") == "Regular Season")
             .max()
@@ -157,10 +171,12 @@ def team_context() -> pl.DataFrame:
             .alias("team_regular_total"),
         )
         .with_columns(
-            (pl.col("team_wins_before") / pl.col("team_games_before").cast(pl.Float64))
-            .alias("team_win_pct_before"),
-            (pl.col("team_regular_total") - pl.col("team_game_idx"))
-            .alias("team_regular_remaining"),
+            (pl.col("team_wins_before") / pl.col("team_games_before").cast(pl.Float64)).alias(
+                "team_win_pct_before"
+            ),
+            (pl.col("team_regular_total") - pl.col("team_game_idx")).alias(
+                "team_regular_remaining"
+            ),
         )
     )
 
@@ -187,19 +203,39 @@ def team_context() -> pl.DataFrame:
     # smooth proxy that confounds quality with incentive; playoff hope is the
     # quantity a front office actually responds to.
     inc = standings.playin_probability().select(
-        "season", "game_date", "team_slug", "playin_probability", "playin_stakes",
-        "eliminated", "clinched_playin", "games_since_elimination",
+        "season",
+        "game_date",
+        "team_slug",
+        "playin_probability",
+        "playin_stakes",
+        "eliminated",
+        "clinched_playin",
+        "games_since_elimination",
         "wins_vs_playin_line",
     )
     cal = cal.join(inc, on=["season", "game_date", "team_slug"], how="left")
 
     return cal.select(
-        "season", "game_id", "team_slug", "team_game_idx", "game_date", "season_type",
-        "days_rest", "home", "opp_slug",
-        "team_games_before", "team_win_pct_before", "team_regular_remaining",
-        "team_regular_total", "team_games_next_14d",
-        "playin_probability", "playin_stakes", "eliminated", "clinched_playin",
-        "games_since_elimination", "wins_vs_playin_line",
+        "season",
+        "game_id",
+        "team_slug",
+        "team_game_idx",
+        "game_date",
+        "season_type",
+        "days_rest",
+        "home",
+        "opp_slug",
+        "team_games_before",
+        "team_win_pct_before",
+        "team_regular_remaining",
+        "team_regular_total",
+        "team_games_next_14d",
+        "playin_probability",
+        "playin_stakes",
+        "eliminated",
+        "clinched_playin",
+        "games_since_elimination",
+        "wins_vs_playin_line",
     )
 
 
@@ -212,8 +248,13 @@ def injury_history(spells: pl.DataFrame) -> pl.DataFrame:
     construction, so an earlier start also means an earlier finish.
     """
     s = spells.select(
-        "spell_id", "player_id", "season", "start_date", "last_missed_date",
-        "games_missed", "body_region",
+        "spell_id",
+        "player_id",
+        "season",
+        "start_date",
+        "last_missed_date",
+        "games_missed",
+        "body_region",
     )
     prior = s.select(
         "player_id",
@@ -231,15 +272,19 @@ def injury_history(spells: pl.DataFrame) -> pl.DataFrame:
         pl.len().alias("prior_spells_career"),
         pl.col("p_games").sum().alias("prior_games_missed_career"),
         (pl.col("p_season") == pl.col("season")).sum().alias("prior_spells_season"),
-        pl.col("p_games").filter(pl.col("p_season") == pl.col("season")).sum()
+        pl.col("p_games")
+        .filter(pl.col("p_season") == pl.col("season"))
+        .sum()
         .alias("prior_games_missed_season"),
-        (pl.col("p_start") >= pl.col("start_date") - pl.duration(days=365)).sum()
+        (pl.col("p_start") >= pl.col("start_date") - pl.duration(days=365))
+        .sum()
         .alias("prior_spells_365d"),
         pl.col("p_games")
         .filter(pl.col("p_start") >= pl.col("start_date") - pl.duration(days=365))
         .sum()
         .alias("prior_games_missed_365d"),
-        (pl.col("start_date").first() - pl.col("p_end").max()).dt.total_days()
+        (pl.col("start_date").first() - pl.col("p_end").max())
+        .dt.total_days()
         .alias("days_since_prior_spell"),
         pl.col("p_games").sort_by("p_start").last().alias("prior_spell_games"),
     )
@@ -251,15 +296,21 @@ def injury_history(spells: pl.DataFrame) -> pl.DataFrame:
             pl.len().alias("prior_spells_same_region"),
             pl.col("p_games").sum().alias("prior_games_missed_same_region"),
             pl.col("p_games").sort_by("p_start").last().alias("prior_same_region_games"),
-            (pl.col("start_date").first() - pl.col("p_end").max()).dt.total_days()
+            (pl.col("start_date").first() - pl.col("p_end").max())
+            .dt.total_days()
             .alias("days_since_same_region"),
         )
     )
 
     counts = [
-        "prior_spells_career", "prior_games_missed_career", "prior_spells_season",
-        "prior_games_missed_season", "prior_spells_365d", "prior_games_missed_365d",
-        "prior_spells_same_region", "prior_games_missed_same_region",
+        "prior_spells_career",
+        "prior_games_missed_career",
+        "prior_spells_season",
+        "prior_games_missed_season",
+        "prior_spells_365d",
+        "prior_games_missed_365d",
+        "prior_spells_same_region",
+        "prior_games_missed_same_region",
     ]
     out = (
         s.select("spell_id")
@@ -271,7 +322,8 @@ def injury_history(spells: pl.DataFrame) -> pl.DataFrame:
         # A fresh absence to the same body part within a month is a different
         # animal from a first-time one.
         (pl.col("days_since_same_region") <= 30).fill_null(False).alias("is_quick_recurrence"),
-        (pl.col("days_since_prior_spell") <= 7).fill_null(False)
+        (pl.col("days_since_prior_spell") <= 7)
+        .fill_null(False)
         .alias("is_immediate_reaggravation"),
     )
 
@@ -297,20 +349,23 @@ def build_index_features(spells: pl.DataFrame) -> pl.DataFrame:
         )
         .rename({"game_date": "last_played_date"})
         .with_columns(
-            (pl.col("start_date") - pl.col("last_played_date")).dt.total_days()
+            (pl.col("start_date") - pl.col("last_played_date"))
+            .dt.total_days()
             .alias("days_since_last_played")
         )
     )
 
     df = df.join(
-        tctx.drop("game_date", "season_type").rename({
-            "playin_probability": "hope_at_onset",
-            "playin_stakes": "stakes_at_onset",
-            "eliminated": "eliminated_at_onset",
-            "clinched_playin": "clinched_at_onset",
-            "games_since_elimination": "games_since_elim_at_onset",
-            "wins_vs_playin_line": "wins_vs_playin_at_onset",
-        }),
+        tctx.drop("game_date", "season_type").rename(
+            {
+                "playin_probability": "hope_at_onset",
+                "playin_stakes": "stakes_at_onset",
+                "eliminated": "eliminated_at_onset",
+                "clinched_playin": "clinched_at_onset",
+                "games_since_elimination": "games_since_elim_at_onset",
+                "wins_vs_playin_line": "wins_vs_playin_at_onset",
+            }
+        ),
         left_on=["season", "start_game_id", "team_slug_start"],
         right_on=["season", "game_id", "team_slug"],
         how="left",
@@ -323,8 +378,7 @@ def build_index_features(spells: pl.DataFrame) -> pl.DataFrame:
         # Divided by the 82-game regular season, not by the games the team
         # ended up playing: how deep they went in the playoffs is not
         # knowable when the player is ruled out in December.
-        (pl.col("start_team_game_idx") / pl.col("team_regular_total"))
-        .alias("season_progress"),
+        (pl.col("start_team_game_idx") / pl.col("team_regular_total")).alias("season_progress"),
         pl.col("start_date").dt.month().alias("start_month"),
         (pl.col("start_season_type") == "Playoffs").alias("starts_in_playoffs"),
         # A spell that is already running when the season opens began in the
@@ -346,9 +400,9 @@ def build_index_features(spells: pl.DataFrame) -> pl.DataFrame:
         # every team's hope is simply the league base rate: twenty of thirty
         # teams reach the play-in.
         pl.col("hope_at_onset").fill_null(standings.PLAYIN_SEEDS * 2 / 30).alias("hope_at_onset"),
-        pl.col("stakes_at_onset").fill_null(
-            4 * (standings.PLAYIN_SEEDS * 2 / 30) * (1 - standings.PLAYIN_SEEDS * 2 / 30)
-        ).alias("stakes_at_onset"),
+        pl.col("stakes_at_onset")
+        .fill_null(4 * (standings.PLAYIN_SEEDS * 2 / 30) * (1 - standings.PLAYIN_SEEDS * 2 / 30))
+        .alias("stakes_at_onset"),
         pl.col("eliminated_at_onset").fill_null(False).alias("eliminated_at_onset"),
         pl.col("clinched_at_onset").fill_null(False).alias("clinched_at_onset"),
         pl.col("wins_vs_playin_at_onset").fill_null(0).alias("wins_vs_playin_at_onset"),
@@ -363,47 +417,99 @@ def build_index_features(spells: pl.DataFrame) -> pl.DataFrame:
 # inline is what makes "which variables actually drive duration" answerable.
 BLOCKS: dict[str, list[str]] = {
     "injury": [
-        "body_region", "body_side", "ailment_class", "is_surgical",
-        "is_recovery_stage", "is_management", "is_bone_stress", "is_catastrophic",
-        "n_reason_separators", "is_illness", "index_status",
+        "body_region",
+        "body_side",
+        "ailment_class",
+        "is_surgical",
+        "is_recovery_stage",
+        "is_management",
+        "is_bone_stress",
+        "is_catastrophic",
+        "n_reason_separators",
+        "is_illness",
+        "index_status",
     ],
     "player": [
-        "age", "height_cm", "weight_kg", "bmi", "position_group",
-        "draft_number", "draft_round", "years_since_draft",
+        "age",
+        "height_cm",
+        "weight_kg",
+        "bmi",
+        "position_group",
+        "draft_number",
+        "draft_round",
+        "years_since_draft",
     ],
     "load": [
-        "min_last", "min_roll3", "min_roll5", "min_roll10", "min_sd10", "min_trend",
-        "usg_roll5", "usg_roll10", "pace_roll5", "min_7d", "min_14d", "min_30d",
-        "games_7d", "games_14d", "rest_before_last_game", "career_games",
-        "career_minutes", "career_min_per_game", "season_games", "season_minutes",
+        "min_last",
+        "min_roll3",
+        "min_roll5",
+        "min_roll10",
+        "min_sd10",
+        "min_trend",
+        "usg_roll5",
+        "usg_roll10",
+        "pace_roll5",
+        "min_7d",
+        "min_14d",
+        "min_30d",
+        "games_7d",
+        "games_14d",
+        "rest_before_last_game",
+        "career_games",
+        "career_minutes",
+        "career_min_per_game",
+        "season_games",
+        "season_minutes",
         "days_since_last_played",
     ],
     "history": [
-        "prior_spells_career", "prior_games_missed_career", "prior_spells_season",
-        "prior_games_missed_season", "prior_spells_same_region",
-        "prior_games_missed_same_region", "prior_games_missed_365d",
-        "prior_spells_365d", "days_since_prior_spell", "prior_spell_games",
-        "prior_same_region_games", "days_since_same_region",
-        "is_quick_recurrence", "is_immediate_reaggravation",
+        "prior_spells_career",
+        "prior_games_missed_career",
+        "prior_spells_season",
+        "prior_games_missed_season",
+        "prior_spells_same_region",
+        "prior_games_missed_same_region",
+        "prior_games_missed_365d",
+        "prior_spells_365d",
+        "days_since_prior_spell",
+        "prior_spell_games",
+        "prior_same_region_games",
+        "days_since_same_region",
+        "is_quick_recurrence",
+        "is_immediate_reaggravation",
     ],
     # Kept separate from `context` on purpose: the question "how much of a
     # published duration is medicine and how much is the team's situation"
     # only has an answer if the two are separable in the ablation.
     "incentive": [
-        "hope_at_onset", "stakes_at_onset", "eliminated_at_onset",
-        "clinched_at_onset", "games_since_elim_at_onset",
+        "hope_at_onset",
+        "stakes_at_onset",
+        "eliminated_at_onset",
+        "clinched_at_onset",
+        "games_since_elim_at_onset",
         "wins_vs_playin_at_onset",
     ],
     "context": [
-        "season_progress", "start_month", "starts_in_playoffs",
-        "starts_at_season_open", "start_on_b2b", "days_rest", "home",
-        "team_games_before", "team_win_pct_before", "team_regular_remaining",
+        "season_progress",
+        "start_month",
+        "starts_in_playoffs",
+        "starts_at_season_open",
+        "start_on_b2b",
+        "days_rest",
+        "home",
+        "team_games_before",
+        "team_win_pct_before",
+        "team_regular_remaining",
         "team_games_next_14d",
     ],
 }
 
 CATEGORICAL = [
-    "body_region", "body_side", "ailment_class", "position_group", "index_status",
+    "body_region",
+    "body_side",
+    "ailment_class",
+    "position_group",
+    "index_status",
 ]
 
 
