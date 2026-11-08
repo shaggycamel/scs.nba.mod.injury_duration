@@ -154,7 +154,7 @@ uv run --group data python scripts/15_publish_daily.py
 ```
 
 The publisher replaces the season's rows in one transaction, so rerunning after
-a correction is safe. `kobe_public` has `SELECT` on the table.
+a correction is safe. `kobe_public` has `SELECT` on the public view.
 
 ## Lean inference experiment
 
