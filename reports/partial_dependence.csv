@@ -1,73 +1,73 @@
 feature,value,mean_hazard
-"elapsed (games, days, log together)",1,0.1823
-"elapsed (games, days, log together)",2,0.134
-"elapsed (games, days, log together)",3,0.1191
-"elapsed (games, days, log together)",5,0.1006
-"elapsed (games, days, log together)",8,0.0882
-"elapsed (games, days, log together)",12,0.0811
-"elapsed (games, days, log together)",20,0.0864
-"elapsed (games, days, log together)",30,0.0653
-"elapsed (games, days, log together)",50,0.0538
-ailment_class,concussion,0.166
-ailment_class,contusion,0.1776
-ailment_class,dislocation,0.1148
-ailment_class,effusion,0.1458
-ailment_class,fracture,0.1037
-ailment_class,illness,0.1976
-ailment_class,management,0.1923
-ailment_class,recovery,0.1682
-ailment_class,rupture_tear,0.1035
-ailment_class,soreness,0.1663
-ailment_class,sprain,0.1354
-ailment_class,strain,0.1296
-ailment_class,surgery,0.1195
-ailment_class,tendinopathy,0.1513
-ailment_class,unknown,0.1417
-body_region,achilles,0.1565
-body_region,ankle,0.1689
-body_region,back_core,0.1583
-body_region,elbow_arm,0.1551
-body_region,foot,0.147
-body_region,hamstring,0.1505
-body_region,hand_wrist,0.1551
-body_region,head_face,0.1963
-body_region,hip_groin,0.1609
-body_region,knee,0.1461
-body_region,knee_ligament,0.1296
-body_region,lower_leg,0.1432
-body_region,neck,0.1579
-body_region,quad,0.1576
-body_region,shoulder,0.1512
-body_region,systemic,0.1832
-body_region,unknown,0.1709
-age,21,0.157
-age,24,0.1559
-age,27,0.1569
-age,30,0.1585
-age,33,0.1604
-age,36,0.1592
-days_to_next_game,1,0.145
-days_to_next_game,2,0.1424
-days_to_next_game,3,0.173
-days_to_next_game,4,0.2057
-days_to_next_game,6,0.3121
-prior_spells_365d,0,0.1555
-prior_spells_365d,1,0.1555
-prior_spells_365d,2,0.156
-prior_spells_365d,4,0.1584
-prior_spells_365d,8,0.16
-min_roll5,10,0.1479
-min_roll5,20,0.1584
-min_roll5,25,0.1595
-min_roll5,30,0.1595
-min_roll5,35,0.1593
-team_win_pct_before,0.2,0.1531
-team_win_pct_before,0.35,0.1512
-team_win_pct_before,0.5,0.1571
-team_win_pct_before,0.65,0.1616
-team_win_pct_before,0.8,0.1734
-team_regular_remaining,1,0.158
-team_regular_remaining,5,0.158
-team_regular_remaining,15,0.158
-team_regular_remaining,40,0.1576
-team_regular_remaining,70,0.1577
+"elapsed (games, days, log together)",1,0.1732
+"elapsed (games, days, log together)",2,0.1488
+"elapsed (games, days, log together)",3,0.1484
+"elapsed (games, days, log together)",5,0.1189
+"elapsed (games, days, log together)",8,0.0864
+"elapsed (games, days, log together)",12,0.086
+"elapsed (games, days, log together)",20,0.0816
+"elapsed (games, days, log together)",30,0.0568
+"elapsed (games, days, log together)",50,0.0535
+ailment_class,concussion,0.1755
+ailment_class,contusion,0.1853
+ailment_class,dislocation,0.1052
+ailment_class,effusion,0.1537
+ailment_class,fracture,0.1002
+ailment_class,illness,0.2082
+ailment_class,management,0.1977
+ailment_class,recovery,0.1549
+ailment_class,rupture_tear,0.099
+ailment_class,soreness,0.1679
+ailment_class,sprain,0.1352
+ailment_class,strain,0.1337
+ailment_class,surgery,0.1142
+ailment_class,tendinopathy,0.1485
+ailment_class,unknown,0.1471
+body_region,achilles,0.1592
+body_region,ankle,0.1718
+body_region,back_core,0.159
+body_region,elbow_arm,0.1577
+body_region,foot,0.153
+body_region,hamstring,0.1525
+body_region,hand_wrist,0.158
+body_region,head_face,0.1944
+body_region,hip_groin,0.1573
+body_region,knee,0.1492
+body_region,knee_ligament,0.129
+body_region,lower_leg,0.1422
+body_region,neck,0.1612
+body_region,quad,0.1631
+body_region,shoulder,0.1525
+body_region,systemic,0.1901
+body_region,unknown,0.1814
+age,21,0.1578
+age,24,0.1594
+age,27,0.1602
+age,30,0.1608
+age,33,0.1626
+age,36,0.1637
+days_to_next_game,1,0.1482
+days_to_next_game,2,0.1448
+days_to_next_game,3,0.1755
+days_to_next_game,4,0.2041
+days_to_next_game,6,0.3145
+prior_spells_365d,0,0.159
+prior_spells_365d,1,0.159
+prior_spells_365d,2,0.1598
+prior_spells_365d,4,0.1604
+prior_spells_365d,8,0.1633
+min_roll5,10,0.1584
+min_roll5,20,0.1615
+min_roll5,25,0.1615
+min_roll5,30,0.1614
+min_roll5,35,0.1608
+team_win_pct_before,0.2,0.1583
+team_win_pct_before,0.35,0.1549
+team_win_pct_before,0.5,0.1578
+team_win_pct_before,0.65,0.1657
+team_win_pct_before,0.8,0.1742
+team_regular_remaining,1,0.1609
+team_regular_remaining,5,0.1612
+team_regular_remaining,15,0.1609
+team_regular_remaining,40,0.1608
+team_regular_remaining,70,0.1607

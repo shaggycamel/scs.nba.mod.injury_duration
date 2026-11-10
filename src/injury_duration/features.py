@@ -78,7 +78,16 @@ def played_game_history() -> pl.DataFrame:
     box = (
         pl.read_parquet(
             paths.BOX,
-            columns=["game_id", "player_id", "min", "usg_pct", "pts", "poss", "pace"],
+            columns=[
+                "game_id",
+                "player_id",
+                "min",
+                "usg_pct",
+                "pts",
+                "poss",
+                "pace",
+                "start_position",
+            ],
         )
         .filter(pl.col("min") > 0)
         .join(sched, on="game_id", how="inner")
@@ -89,6 +98,9 @@ def played_game_history() -> pl.DataFrame:
     over = ["player_id"]
     # A length-matched column of ones, for counting inside date windows.
     one = pl.col("game_id").is_not_null().cast(pl.Int32)
+    started = (pl.col("start_position").is_not_null() & (pl.col("start_position") != "")).cast(
+        pl.Int8
+    )
     return box.with_columns(
         # Career wear. Truncated at 2009-10 for the handful of players whose
         # careers started earlier; `draft_year` carries the untruncated signal.
@@ -103,6 +115,8 @@ def played_game_history() -> pl.DataFrame:
         pl.col("min").rolling_mean(5, min_samples=1).over(over).alias("min_roll5"),
         pl.col("min").rolling_mean(10, min_samples=1).over(over).alias("min_roll10"),
         pl.col("min").rolling_std(10, min_samples=2).over(over).alias("min_sd10"),
+        started.alias("started"),
+        started.rolling_mean(10, min_samples=1).over(over).alias("start_rate_10"),
         pl.col("usg_pct").rolling_mean(5, min_samples=1).over(over).alias("usg_roll5"),
         pl.col("usg_pct").rolling_mean(10, min_samples=1).over(over).alias("usg_roll10"),
         pl.col("pace").rolling_mean(5, min_samples=1).over(over).alias("pace_roll5"),
@@ -128,6 +142,7 @@ def played_game_history() -> pl.DataFrame:
         "min_roll5",
         "min_roll10",
         "min_sd10",
+        "start_rate_10",
         "usg_roll5",
         "usg_roll10",
         "pace_roll5",
@@ -410,6 +425,20 @@ def build_index_features(spells: pl.DataFrame) -> pl.DataFrame:
         (pl.col("career_minutes") / pl.col("career_games")).alias("career_min_per_game"),
         (pl.col("min_roll5") - pl.col("min_roll10")).alias("min_trend"),
     )
+    df = df.with_columns(
+        pl.when(pl.col("team_games_before") > 0)
+        .then(pl.col("season_games") / pl.col("team_games_before"))
+        .otherwise(0.0)
+        .alias("season_games_share")
+    ).with_columns(
+        (
+            (pl.col("start_rate_10") >= 0.5)
+            | ((pl.col("min_roll5") >= 15) & (pl.col("season_games_share") >= 0.5))
+        )
+        .fill_null(False)
+        .cast(pl.Int8)
+        .alias("is_rotation")
+    )
     return df
 
 
@@ -446,6 +475,9 @@ BLOCKS: dict[str, list[str]] = {
         "min_roll10",
         "min_sd10",
         "min_trend",
+        "start_rate_10",
+        "season_games_share",
+        "is_rotation",
         "usg_roll5",
         "usg_roll10",
         "pace_roll5",

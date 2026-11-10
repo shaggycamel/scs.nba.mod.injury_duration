@@ -123,7 +123,7 @@ def main() -> None:
         "nba/player_box_score": f"""
             SELECT DISTINCT game_id, team_id, player_id::BIGINT AS player_id,
                    player_name, min, inj_reason AS comment,
-                   usg_pct, pts, poss, pace
+                   usg_pct, pts, poss, pace, start_position
             FROM nba.player_box_score_vw
             WHERE min > 0
               AND game_id IN (

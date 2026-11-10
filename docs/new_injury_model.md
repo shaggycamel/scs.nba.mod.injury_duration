@@ -443,9 +443,18 @@ only fair way to tune the live model and calibration layer.
 
 ### Phase 3 — Rotation-aware model
 
-- [ ] Two-stage availability/play model or explicit rotation feature.
-- [ ] Evaluate on the fresh-and-rotation subset.
-- [ ] Compare to the current hazard on the same labels.
+- [x] Explicit rotation features. `player_box_score_vw` now exposes
+  `start_position`; the load block adds `start_rate_10`,
+  `season_games_share` and `is_rotation` (start rate or recent minutes plus
+  games share).
+- [x] Evaluate on the fresh-and-rotation subset. On the corrected labels the
+  median C-index is 0.696 for fresh AND rotation (0.692 before the features),
+  0.718 for rotation players (0.715 before), and 0.732 for all test spells
+  (0.730 before).
+- [x] Compare to the current hazard on the same labels. The gain is small but
+  consistent across the all-spell, rotation and fresh-and-rotation subsets;
+  keep the features. A full two-stage availability/play model remains future
+  work.
 
 ### Phase 4 — Long tail
 

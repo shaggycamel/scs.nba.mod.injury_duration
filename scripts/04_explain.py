@@ -188,8 +188,8 @@ def main() -> None:
     print("=" * 78)
     pdp_rows = []
     grids = {
-        "ailment_class": sorted(te["ailment_class"].unique().to_list()),
-        "body_region": sorted(te["body_region"].unique().to_list()),
+        "ailment_class": te["ailment_class"].drop_nulls().unique().sort().to_list(),
+        "body_region": te["body_region"].drop_nulls().unique().sort().to_list(),
         "age": [21, 24, 27, 30, 33, 36],
         "days_to_next_game": [1, 2, 3, 4, 6],
         "prior_spells_365d": [0, 1, 2, 4, 8],
