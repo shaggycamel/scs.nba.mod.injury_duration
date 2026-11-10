@@ -400,10 +400,23 @@ only fair way to tune the live model and calibration layer.
 
 ### Phase 1 — Labels and rebuild
 
-- [ ] Bridge report gaps / Available DNP to next played game.
-- [ ] Continue spells across trades.
-- [ ] Rebuild 2021-26 and compare old vs new labels.
-- [ ] Re-run the 2025-26 test on corrected labels.
+- [x] Bridge report gaps / Available DNP to next played game. The bridge now
+  treats `missed_Available` as a gap, allows the gap to end at a played game,
+  and uses an exact run length (the old cumulative-sum version treated a
+  3-game gap as 4). The 2021-26 build has 6,733 spells, an 84.4% event rate,
+  and 216 `dropped_from_report` censors (down from 690).
+- [x] Continue spells across trades. The roster backfill now adds stints
+  evidenced by the injury report (source fix), and the bridge allows up to 30
+  games when a gap crosses a stint boundary. The final 2021-26 build has 6,877
+  spells, an 85.3% event rate, and 24 `left_roster` censors (down from 46);
+  the remainder are genuine departures or absences longer than the trade
+  allowance.
+- [x] Rebuild 2021-26 and compare old vs new labels.
+- [x] Re-run the 2025-26 test on corrected labels: hazard histgb C-index 0.728
+  versus 0.744 on the previous labels, MAE 2.671 versus 2.561. The model still
+  beats the KM region x ailment baseline (0.680), but the corrected labels are
+  harder; the next step is a refit and the rotation-aware model, not tuning on
+  2025-26.
 
 ### Phase 2 — Daily backtest
 
