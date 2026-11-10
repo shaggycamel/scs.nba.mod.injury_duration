@@ -51,6 +51,10 @@ CENSOR_CATEGORIES = ("gleague", "roster", "suspension", "personal", "protocol")
 # as "still out" when it is sandwiched between two reported-out games.
 MAX_BRIDGE_GAMES = 3
 
+# A player can be traded while injured and go unreported for longer than a
+# normal gap. Only runs that cross a stint boundary get this wider allowance.
+MAX_TRADE_BRIDGE_GAMES = 30
+
 
 def health_missed(categories: tuple[str, ...] = CONTINUE_CATEGORIES) -> pl.Expr:
     """Game missed for a health reason the report names.
@@ -193,10 +197,25 @@ def build_panel() -> tuple[pl.DataFrame, dict]:
         rep.select("season", "team_slug", "player_id", "team_game_idx"),
         box.select("season", "team_slug", "player_id", "team_game_idx"),
     ]
+    stints = None
     if paths.ROSTER.exists():
         roster = pl.read_parquet(
             paths.ROSTER,
             columns=["season", "team_slug", "player_id", "entry_date", "exit_date"],
+        )
+        stints = (
+            roster.sort("player_id", "season", "entry_date")
+            .with_columns(
+                pl.col("entry_date").shift(-1).over("player_id", "season").alias("next_entry")
+            )
+            .select(
+                "season",
+                "team_slug",
+                "player_id",
+                "entry_date",
+                "exit_date",
+                "next_entry",
+            )
         )
         # Only extend stints for players we have actually seen on that team.
         # A roster row alone is not evidence that the player was available or
@@ -267,6 +286,29 @@ def build_panel() -> tuple[pl.DataFrame, dict]:
         )
     )
 
+    if stints is not None:
+        panel = panel.with_row_index("_panel_row")
+        flags = (
+            panel.select("_panel_row", "season", "team_slug", "player_id", "game_date")
+            .join(stints, on=["season", "team_slug", "player_id"], how="inner")
+            .filter(
+                (pl.col("game_date") >= pl.col("entry_date"))
+                & (pl.col("game_date") < pl.col("exit_date"))
+            )
+            .select(
+                "_panel_row",
+                pl.col("next_entry").is_not_null().alias("has_next_stint"),
+            )
+            .unique(subset=["_panel_row"])
+        )
+        panel = (
+            panel.join(flags, on="_panel_row", how="left")
+            .with_columns(pl.col("has_next_stint").fill_null(False))
+            .drop("_panel_row")
+        )
+    else:
+        panel = panel.with_columns(pl.lit(False).alias("has_next_stint"))
+
     # A handful of regular-season dates have no report at all (scraper gaps);
     # knowing that lets the bridge below distinguish "nobody was reported" from
     # "this player specifically was not reported".
@@ -325,48 +367,90 @@ def build_panel() -> tuple[pl.DataFrame, dict]:
 
 
 def _bridge_report_gaps(panel: pl.DataFrame) -> pl.DataFrame:
-    """Relabel short unreported gaps that sit between two reported-out games.
+    """Relabel short non-health gaps inside an absence.
 
     A player missing from both the box score and the report is usually just
     absent from the report, not available: either the whole date is missing
-    from the scrape, or their row was dropped. Only gaps of at most
-    MAX_BRIDGE_GAMES games, bounded on both sides by a health-driven Out, are
-    bridged; anything longer is left alone so a quiet stretch at the back of
-    a roster cannot be mistaken for a four-month injury.
-    """
-    p = panel.with_columns(health_missed().alias("_health_out"))
+    from the scrape, or their row was dropped. The same applies to a player
+    listed Available but DNP: that is a coach's decision (or rest), not a
+    competing event, when it sits between a health absence and the next
+    played game.
 
-    # Nearest decided state on each side, ignoring the unreported rows.
-    decided = pl.when(pl.col("state") != "unlisted_absent").then(pl.col("_health_out"))
-    decided_cat = pl.when(pl.col("state") != "unlisted_absent").then(pl.col("reason_category"))
-    decided_reason = pl.when(pl.col("state") != "unlisted_absent").then(pl.col("reason"))
+    Only gaps of at most MAX_BRIDGE_GAMES games are bridged. The gap must be
+    preceded by a health-driven Out and followed by either another health Out
+    or a played game. Anything longer, or a gap that ends at a censor event,
+    is left alone so a quiet stretch at the back of a roster cannot be
+    mistaken for a four-month injury.
+
+    A run that crosses a roster-stint boundary gets the wider
+    MAX_TRADE_BRIDGE_GAMES allowance: a traded player can be unreported for
+    longer than a normal gap while the new team settles in.
+    """
+    p = panel.sort("player_id", "season", "player_game_idx")
+    prev_row_has_next = (
+        pl.col("has_next_stint").shift(1).over("player_id", "season").fill_null(False)
+    )
+    p = p.with_columns(
+        health_missed().alias("_health_out"),
+        (
+            pl.col("state").is_in(["unlisted_absent", "missed_Available"])
+            | ((pl.col("reason_category") == "roster") & pl.col("has_next_stint"))
+            | (
+                (pl.col("reason_category") == "roster")
+                & ~pl.col("has_next_stint")
+                & prev_row_has_next
+            )
+        ).alias("_is_gap"),
+        ((pl.col("reason_category") == "roster") & pl.col("has_next_stint")).alias("_is_trade_gap"),
+        (
+            (pl.col("reason_category") == "roster") & ~pl.col("has_next_stint") & prev_row_has_next
+        ).alias("_is_trade_transition"),
+        pl.col("has_next_stint").alias("_has_next_stint"),
+    )
+
+    # Nearest decided state on each side, ignoring the non-health gaps.
+    decided = pl.when(~pl.col("_is_gap")).then(pl.col("_health_out"))
+    decided_played = pl.when(~pl.col("_is_gap")).then(pl.col("played"))
+    decided_cat = pl.when(~pl.col("_is_gap")).then(pl.col("reason_category"))
+    decided_reason = pl.when(~pl.col("_is_gap")).then(pl.col("reason"))
+    decided_has_next = pl.when(~pl.col("_is_gap")).then(pl.col("_has_next_stint"))
 
     p = p.sort("player_id", "season", "player_game_idx").with_columns(
         decided.forward_fill().over("player_id", "season").alias("_prev_out"),
         decided.backward_fill().over("player_id", "season").alias("_next_out"),
+        decided_played.backward_fill().over("player_id", "season").alias("_next_played"),
         decided_cat.forward_fill().over("player_id", "season").alias("_prev_cat"),
         decided_reason.forward_fill().over("player_id", "season").alias("_prev_reason"),
+        decided_has_next.forward_fill().over("player_id", "season").alias("_prev_has_next"),
     )
 
-    # Length of the unreported run this row belongs to.
+    # Length of the non-health run this row belongs to. rle_id keeps the run
+    # length exact; the old cumulative-sum version counted the preceding
+    # decided row and therefore treated a 3-game gap as 4.
+    p = p.with_columns(pl.col("_is_gap").rle_id().over("player_id", "season").alias("_gap_run"))
     p = p.with_columns(
-        (pl.col("state") != "unlisted_absent")
-        .cum_sum()
-        .over("player_id", "season")
-        .alias("_run_id")
-    )
-    p = p.with_columns(
-        pl.when(pl.col("state") == "unlisted_absent")
-        .then(pl.len().over("player_id", "season", "_run_id"))
+        pl.when(pl.col("_is_gap"))
+        .then(pl.len().over("player_id", "season", "_gap_run"))
         .otherwise(0)
-        .alias("_gap_len")
+        .alias("_gap_len"),
+        (
+            pl.col("_is_trade_gap")
+            | pl.col("_is_trade_transition")
+            | pl.col("_prev_has_next").fill_null(False)
+        )
+        .any()
+        .over("player_id", "season", "_gap_run")
+        .alias("_trade_run"),
     )
 
     bridge = (
-        (pl.col("state") == "unlisted_absent")
+        pl.col("_is_gap")
         & pl.col("_prev_out").fill_null(False)
-        & pl.col("_next_out").fill_null(False)
-        & (pl.col("_gap_len") <= MAX_BRIDGE_GAMES)
+        & (pl.col("_next_out").fill_null(False) | pl.col("_next_played").fill_null(False))
+        & (
+            (pl.col("_gap_len") <= MAX_BRIDGE_GAMES)
+            | (pl.col("_trade_run") & (pl.col("_gap_len") <= MAX_TRADE_BRIDGE_GAMES))
+        )
     )
     p = p.with_columns(
         pl.when(bridge).then(pl.lit("out")).otherwise(pl.col("state")).alias("state"),
@@ -380,12 +464,20 @@ def _bridge_report_gaps(panel: pl.DataFrame) -> pl.DataFrame:
     )
     return p.drop(
         "_health_out",
+        "_is_gap",
+        "_is_trade_gap",
+        "_is_trade_transition",
+        "_has_next_stint",
         "_prev_out",
         "_next_out",
+        "_next_played",
         "_prev_cat",
         "_prev_reason",
-        "_run_id",
+        "_prev_has_next",
+        "_gap_run",
         "_gap_len",
+        "_trade_run",
+        "has_next_stint",
     )
 
 
