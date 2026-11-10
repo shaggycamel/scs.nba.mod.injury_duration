@@ -325,47 +325,55 @@ def build_panel() -> tuple[pl.DataFrame, dict]:
 
 
 def _bridge_report_gaps(panel: pl.DataFrame) -> pl.DataFrame:
-    """Relabel short unreported gaps that sit between two reported-out games.
+    """Relabel short non-health gaps inside an absence.
 
     A player missing from both the box score and the report is usually just
     absent from the report, not available: either the whole date is missing
-    from the scrape, or their row was dropped. Only gaps of at most
-    MAX_BRIDGE_GAMES games, bounded on both sides by a health-driven Out, are
-    bridged; anything longer is left alone so a quiet stretch at the back of
-    a roster cannot be mistaken for a four-month injury.
-    """
-    p = panel.with_columns(health_missed().alias("_health_out"))
+    from the scrape, or their row was dropped. The same applies to a player
+    listed Available but DNP: that is a coach's decision (or rest), not a
+    competing event, when it sits between a health absence and the next
+    played game.
 
-    # Nearest decided state on each side, ignoring the unreported rows.
-    decided = pl.when(pl.col("state") != "unlisted_absent").then(pl.col("_health_out"))
-    decided_cat = pl.when(pl.col("state") != "unlisted_absent").then(pl.col("reason_category"))
-    decided_reason = pl.when(pl.col("state") != "unlisted_absent").then(pl.col("reason"))
+    Only gaps of at most MAX_BRIDGE_GAMES games are bridged. The gap must be
+    preceded by a health-driven Out and followed by either another health Out
+    or a played game. Anything longer, or a gap that ends at a censor event,
+    is left alone so a quiet stretch at the back of a roster cannot be
+    mistaken for a four-month injury.
+    """
+    p = panel.with_columns(
+        health_missed().alias("_health_out"),
+        pl.col("state").is_in(["unlisted_absent", "missed_Available"]).alias("_is_gap"),
+    )
+
+    # Nearest decided state on each side, ignoring the non-health gaps.
+    decided = pl.when(~pl.col("_is_gap")).then(pl.col("_health_out"))
+    decided_played = pl.when(~pl.col("_is_gap")).then(pl.col("played"))
+    decided_cat = pl.when(~pl.col("_is_gap")).then(pl.col("reason_category"))
+    decided_reason = pl.when(~pl.col("_is_gap")).then(pl.col("reason"))
 
     p = p.sort("player_id", "season", "player_game_idx").with_columns(
         decided.forward_fill().over("player_id", "season").alias("_prev_out"),
         decided.backward_fill().over("player_id", "season").alias("_next_out"),
+        decided_played.backward_fill().over("player_id", "season").alias("_next_played"),
         decided_cat.forward_fill().over("player_id", "season").alias("_prev_cat"),
         decided_reason.forward_fill().over("player_id", "season").alias("_prev_reason"),
     )
 
-    # Length of the unreported run this row belongs to.
+    # Length of the non-health run this row belongs to. rle_id keeps the run
+    # length exact; the old cumulative-sum version counted the preceding
+    # decided row and therefore treated a 3-game gap as 4.
+    p = p.with_columns(pl.col("_is_gap").rle_id().over("player_id", "season").alias("_gap_run"))
     p = p.with_columns(
-        (pl.col("state") != "unlisted_absent")
-        .cum_sum()
-        .over("player_id", "season")
-        .alias("_run_id")
-    )
-    p = p.with_columns(
-        pl.when(pl.col("state") == "unlisted_absent")
-        .then(pl.len().over("player_id", "season", "_run_id"))
+        pl.when(pl.col("_is_gap"))
+        .then(pl.len().over("player_id", "season", "_gap_run"))
         .otherwise(0)
         .alias("_gap_len")
     )
 
     bridge = (
-        (pl.col("state") == "unlisted_absent")
+        pl.col("_is_gap")
         & pl.col("_prev_out").fill_null(False)
-        & pl.col("_next_out").fill_null(False)
+        & (pl.col("_next_out").fill_null(False) | pl.col("_next_played").fill_null(False))
         & (pl.col("_gap_len") <= MAX_BRIDGE_GAMES)
     )
     p = p.with_columns(
@@ -380,11 +388,13 @@ def _bridge_report_gaps(panel: pl.DataFrame) -> pl.DataFrame:
     )
     return p.drop(
         "_health_out",
+        "_is_gap",
         "_prev_out",
         "_next_out",
+        "_next_played",
         "_prev_cat",
         "_prev_reason",
-        "_run_id",
+        "_gap_run",
         "_gap_len",
     )
 
