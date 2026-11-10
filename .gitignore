@@ -10,6 +10,7 @@ dist/
 
 # Local data and generated analysis outputs
 /data/
+/reports/rolling/
 
 # Persisted model artifacts
 /artifacts/

@@ -32,6 +32,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--season", default="2026-27", help="season to backfill")
     parser.add_argument("--max-k", type=int, default=100)
     parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=50,
+        help="spells per forecast chunk (keeps the 100-step grid in memory)",
+    )
+    parser.add_argument(
         "--out-csv",
         type=Path,
         default=None,
@@ -60,9 +66,28 @@ def main() -> None:
     if spells.is_empty():
         raise SystemExit(f"no spells for {args.season!r} in the current build")
 
-    cutoff = pl.read_parquet(paths.BUILD / "panel.parquet")["game_date"].max()
-    states = daily.build_daily_states(spells, d["features"], d["rows"], cutoff)
-    out = daily.forecast_daily(bundle.live, states, d["team_context"], max_k=args.max_k)
+    cutoff = (
+        pl.read_parquet(paths.BUILD / "panel.parquet")
+        .filter(pl.col("season") == args.season)["game_date"]
+        .max()
+    )
+    if cutoff is None:
+        raise SystemExit(f"no panel rows for {args.season!r}")
+    out_chunks: list[pl.DataFrame] = []
+    n_states = 0
+    for offset in range(0, spells.height, args.chunk_size):
+        chunk = spells.slice(offset, args.chunk_size)
+        states = daily.build_daily_states(chunk, d["features"], d["rows"], cutoff)
+        if states.is_empty():
+            continue
+        n_states += states.height
+        chunk_out = daily.forecast_daily(bundle.live, states, d["team_context"], max_k=args.max_k)
+        if "state_id" in chunk_out.columns:
+            chunk_out = chunk_out.drop("state_id")
+        out_chunks.append(chunk_out)
+    if not out_chunks:
+        raise SystemExit(f"no daily states for {args.season!r}")
+    out = pl.concat(out_chunks, how="vertical_relaxed")
     out = out.with_columns(
         pl.when(pl.col("event") == 1)
         .then(pl.col("next_date"))
@@ -117,7 +142,7 @@ def main() -> None:
     print(
         f"{args.season}: {n_spells:,} spells "
         f"({n_censored:,} censored at {cutoff}); "
-        f"{states.height:,} player-days"
+        f"{n_states:,} player-days"
     )
     print(f"  {csv_path}")
     print(f"  {parquet_path}")

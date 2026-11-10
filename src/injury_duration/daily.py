@@ -84,7 +84,17 @@ def build_daily_states(
                 }
             )
             d += timedelta(days=1)
-    days = pl.DataFrame(days)
+    days = pl.DataFrame(
+        days,
+        schema={
+            "spell_id": pl.String,
+            "player_name": pl.String,
+            "prediction_date": pl.Date,
+            "start_date": pl.Date,
+            "next_date": pl.Date,
+            "censor_reason": pl.String,
+        },
+    )
     if days.is_empty():
         return days
 

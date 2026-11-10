@@ -420,9 +420,26 @@ only fair way to tune the live model and calibration layer.
 
 ### Phase 2 — Daily backtest
 
-- [ ] Backfill daily predictions for 2021-26.
-- [ ] Measure as-of calibration and error by horizon/elapsed.
-- [ ] Choose the calibration approach on 2024-25; test on 2025-26.
+- [x] Backfill daily predictions for 2021-26. The rolling-origin run covers
+  2023-24..2025-26 (2021-22 and 2022-23 do not have enough prior seasons for a
+  fair training window). `14_backfill_daily.py` now chunks spells and uses the
+  season's own panel cutoff, so a historical season does not run to the latest
+  build date.
+- [x] Measure as-of calibration and error by horizon/elapsed. Raw daily
+  Brier skill / AUC on the rolling models:
+
+  | Season | 7d skill | 7d AUC | 14d skill | 14d AUC | 30d skill | 30d AUC |
+  |---|---:|---:|---:|---:|---:|---:|
+  | 2023-24 | -0.328 | 0.723 | -0.152 | 0.745 | -0.030 | 0.788 |
+  | 2024-25 | 0.034 | 0.767 | 0.174 | 0.797 | 0.266 | 0.839 |
+  | 2025-26 | -0.088 | 0.709 | 0.052 | 0.729 | 0.200 | 0.777 |
+
+- [x] Choose the calibration approach on 2024-25; test on 2025-26. Global
+  isotonic improves 7d Brier skill from -0.088 to +0.004 and 14d from 0.052 to
+  0.063, but hurts 30d (0.200 -> 0.187). Platt is slightly worse than isotonic
+  on 7d/14d. Do not add a production calibration layer yet: the 7d signal is
+  close to the base rate and the 30d model is already better uncalibrated. The
+  next model has to improve the 7d signal itself.
 
 ### Phase 3 — Rotation-aware model
 
