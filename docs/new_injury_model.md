@@ -56,7 +56,7 @@ still censored, and the model is slightly pessimistic on short absences.
 |---|---|
 | `nba.injuries_vw` | Per-game injury report: status, free-text reason, team, game. The only source of absence. Adds season/season type and conformed names. |
 | `nba.league_game_schedule_vw` | Canonical team-game calendar. Used for the panel, schedule density, team context, and home/road. |
-| `nba.player_box_score_played_vw` | **New thin view** over `nba.player_box_score` with `min > 0`. Authoritative for who played and for workload/usage features. Do not use the roster-expanded `player_box_score_vw` for this. |
+| `nba.player_box_score_vw` | Existing roster-expanded view. Use only with `WHERE min > 0` and deduplicate on `(game_id, player_id)` for the played source. No new played-only view. |
 | `nba.player_info_vw` | Player attributes (birthdate, height, weight, position, draft). Mostly for context; the current model shows these are largely deletable. |
 | `nba.teams_vw` | Team id/slug, conference, division, active flag. Conference is required for standings. |
 | `nba.team_roster` | Clean player-team stints with the null-date convention. Used for rotation context and roster-movement history. |
@@ -77,13 +77,25 @@ still censored, and the model is slightly pessimistic on short absences.
 
 - Raw `nba.player_box_score`, `nba.league_game_schedule`, `nba.player_info`,
   `nba.teams`: not read by the model; the view layer replaces them.
-- `nba.player_box_score_vw`: roster-expanded and not a participation record.
-  It missed roughly 54k played player-games before the roster cleanup and still
-  produces cross-team extras. Keep it for dashboard roster expansion only.
 - `nba.player_season_stats`: not used by the model. Dropped from the fetch and
   the data-quality audit.
 - `nba.injuries_parsed`: not needed. The Python taxonomy is versioned with the
   model; the database map is an independent moving part.
+
+### 2.4 Box-score decision
+
+Do not create a separate played-only view. Use the existing
+`nba.player_box_score_vw` with `WHERE min > 0` and deduplicate on
+`(game_id, player_id)`.
+
+The view currently has **29 cross-team extra rows** out of **421,584**
+regular-season played player-games, or **0.007%**. They are historical
+team-abbreviation/join artifacts. That is small enough not to affect model
+metrics, so they are accepted for training. If exactness becomes important,
+fix the team condition in the existing view rather than adding a new object.
+
+The material risk is the roster-expanded DNP rows: they must be filtered with
+`min > 0` so the model does not treat a DNP as a played game.
 
 ---
 
@@ -344,7 +356,7 @@ only fair way to tune the live model and calibration layer.
 - [x] `teams_vw` conference/full mirror.
 - [x] `daily_standings_vw` deterministic view.
 - [x] Remove `player_season_stats` from the fetch/audit.
-- [ ] `player_box_score_played_vw` on Cockroach.
+- [x] Use existing `player_box_score_vw` with `WHERE min > 0`; no new view.
 - [x] Clean `nba.team_roster` locally and on Cockroach.
 - [x] Fix `team_roster_vw` / `player_box_score_vw` season windows.
 - [x] Apply view fixes on Cockroach and verify `kobe_public`.
@@ -415,7 +427,8 @@ only fair way to tune the live model and calibration layer.
 ## 10. Definition of done
 
 - Model reads only the view layer; no raw `nba.*` table outside views.
-- `player_box_score_played_vw` covers all played player-games.
+- The existing `player_box_score_vw`, filtered to `min > 0` and deduplicated,
+  covers all played player-games.
 - `team_roster` has clean stints, no overlaps, and the null-date pattern.
 - 2025-26 test passes the promotion gate on corrected labels.
 - Daily 2021-26 backtest shows calibrated as-of predictions.
