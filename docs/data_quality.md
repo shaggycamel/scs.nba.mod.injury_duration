@@ -38,7 +38,6 @@ upstream change; the counts below are its output as of 2026-11-07.
 | B1 | Non-NBA teams in the schedule | 736 | medium | `calendar.py` |
 | C2 | `min` null for DNP rows | 105,323 | low | `spells.py` |
 | D1 | `player_info` covered two seasons; string birthdate | — | medium | **fixed at source** |
-| D2 | `player_season_stats.player_id` is a float-string | 5,039 | low | avoided |
 
 ---
 
@@ -311,14 +310,6 @@ player and uses only genuinely time-invariant fields (birthdate, listed
 height and weight, draft position), computing age per spell from the
 birthdate. The column cast in that function tolerates either a date or a
 string, so older snapshots still load.
-
-### D2. `nba.player_season_stats.player_id` is a float-string — 5,039 rows
-
-Values like `"1641645.0"`. A direct `cast(Int64)` raises. Cast via `Float64`
-first, or strip the suffix.
-
-**Handled in:** avoided. `player_info` covers 99% of the players needed, so
-this table is not used.
 
 ### D3. `util.unmatched_player_source_vw`
 

@@ -134,10 +134,6 @@ def main() -> None:
             WHERE season <= '{args.through}'
         """,
         "nba/teams": f"SELECT {', '.join(TEAMS_COLUMNS)} FROM nba.teams",
-        "nba/player_season_stats": f"""
-            SELECT season, player_id FROM nba.player_season_stats
-            WHERE season <= '{args.through}'
-        """,
         "util/player_id_map_vw": "SELECT * FROM util.player_id_map_vw",
         "util/unmatched_player_source_vw": "SELECT * FROM util.unmatched_player_source_vw",
     }

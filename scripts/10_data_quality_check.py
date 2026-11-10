@@ -196,13 +196,6 @@ def main() -> int:
     else:
         bad_bd = pi.filter(pl.col("birthdate").cast(pl.String).str.contains("T")).height
     report("D1 birthdate is a string", 'carries a "T00:00:00" suffix', bad_bd)
-    pss = pl.read_parquet(paths.NBA / "player_season_stats.parquet")
-    floaty = pss.filter(pl.col("player_id").str.contains(r"\."))
-    report(
-        "D2 player_season_stats ids",
-        'string ids written as floats, e.g. "1641645.0"',
-        floaty.height,
-    )
     unmatched = pl.read_parquet(paths.UTIL / "unmatched_player_source_vw.parquet")
     report("D3 unmatched crosswalk rows", "players with no player_key", unmatched.height)
 

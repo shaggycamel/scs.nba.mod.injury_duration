@@ -71,7 +71,6 @@ nba/league_game_schedule.parquet
 nba/player_box_score.parquet
 nba/player_info.parquet
 nba/teams.parquet
-nba/player_season_stats.parquet
 util/player_id_map_vw.parquet
 util/unmatched_player_source_vw.parquet
 ```
