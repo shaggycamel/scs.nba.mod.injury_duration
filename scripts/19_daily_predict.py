@@ -42,7 +42,13 @@ def main() -> None:
     spells = d["spells"].filter(pl.col("spell_id").is_in(spell_ids))
     if spells.is_empty():
         raise SystemExit("active spells are not present in the build")
-    cutoff = pl.read_parquet(paths.BUILD / "panel.parquet")["game_date"].max()
+    # The panel now extends to the end of the season through the roster
+    # stints, but the report is only available through the current data date.
+    # Score as of the latest report, not the last scheduled game.
+    cutoff = pl.read_parquet(paths.INJURIES, columns=["game_date"])["game_date"].max()
+    panel_max = pl.read_parquet(paths.BUILD / "panel.parquet")["game_date"].max()
+    if cutoff is None or (panel_max is not None and cutoff > panel_max):
+        cutoff = panel_max
 
     states = daily.build_daily_states(spells, d["features"], d["rows"], cutoff, through=cutoff)
     states = states.filter(pl.col("prediction_date") == cutoff)
