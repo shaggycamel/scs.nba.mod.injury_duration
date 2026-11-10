@@ -166,20 +166,20 @@ was carrying signal (`reports/ablations.csv`):
 
 | variant | features | log loss | Δ | AUC | C-index |
 |---|---|---|---|---|---|
-| full model | 78 | 0.3156 | — | 0.856 | 0.744 |
-| drop elapsed-time + schedule | 71 | 0.3720 | **+0.0565** | 0.796 | 0.745 |
-| drop injury taxonomy | 67 | 0.3318 | **+0.0162** | 0.838 | 0.684 |
-| drop recent load | 57 | 0.3286 | **+0.0130** | 0.841 | 0.715 |
-| drop team incentive | 72 | 0.3166 | +0.0011 | 0.854 | 0.743 |
-| drop season/team context | 67 | 0.3173 | +0.0018 | 0.853 | 0.742 |
-| drop player attributes | 70 | 0.3156 | +0.0000 | 0.855 | 0.743 |
-| drop injury history | 64 | 0.3148 | -0.0007 | 0.856 | 0.745 |
-| *only* injury taxonomy | 11 | 0.4172 | **+0.1017** | 0.724 | 0.687 |
-| *only* recent load | 21 | 0.4185 | **+0.1029** | 0.722 | 0.684 |
-| *only* elapsed + schedule | 7 | 0.3640 | **+0.0484** | 0.801 | 0.506 |
-| *only* team incentive | 6 | 0.4396 | **+0.1241** | 0.611 | 0.566 |
-| *only* player attributes | 8 | 0.4748 | **+0.1593** | 0.500 | 0.523 |
-| *only* injury history | 14 | 0.4771 | **+0.1616** | 0.622 | 0.589 |
+| full model | 81 | 0.3386 | — | 0.843 | 0.732 |
+| drop elapsed-time + schedule | 74 | 0.3911 | **+0.0525** | 0.781 | 0.731 |
+| drop injury taxonomy | 70 | 0.3554 | **+0.0169** | 0.823 | 0.667 |
+| drop recent load | 57 | 0.3459 | +0.0074 | 0.834 | 0.704 |
+| drop team incentive | 75 | 0.3403 | +0.0017 | 0.841 | 0.730 |
+| drop season/team context | 70 | 0.3392 | +0.0006 | 0.842 | 0.734 |
+| drop player attributes | 73 | 0.3382 | -0.0004 | 0.844 | 0.734 |
+| drop injury history | 67 | 0.3379 | -0.0007 | 0.844 | 0.731 |
+| *only* injury taxonomy | 11 | 0.4259 | **+0.0874** | 0.728 | 0.677 |
+| *only* recent load | 24 | 0.4424 | **+0.1039** | 0.696 | 0.671 |
+| *only* elapsed + schedule | 7 | 0.3837 | **+0.0451** | 0.790 | 0.530 |
+| *only* team incentive | 6 | 0.4545 | **+0.1160** | 0.612 | 0.561 |
+| *only* player attributes | 8 | 0.4922 | **+0.1536** | 0.484 | 0.519 |
+| *only* injury history | 14 | 0.4889 | **+0.1503** | 0.613 | 0.594 |
 
 Note the split: **elapsed time dominates the next-game call** (AUC 0.800 on
 its own) but is useless for *ranking* severity (C-index 0.506), because every
@@ -195,12 +195,12 @@ Adding features in permutation-importance order (`reports/parsimony.csv`):
 
 | features | log loss | AUC | C-index |
 |---|---|---|---|
-| 1 | 0.3725 | 0.790 | 0.501 |
-| 3 | 0.3349 | 0.834 | 0.714 |
-| 8 | 0.3184 | 0.854 | 0.734 |
-| **12** | **0.3140** | **0.857** | **0.743** |
-| 20 | 0.3143 | 0.857 | 0.734 |
-| 78 | 0.3156 | 0.856 | 0.744 |
+| 1 | 0.3903 | 0.783 | 0.500 |
+| 3 | 0.3617 | 0.819 | 0.677 |
+| 8 | 0.3385 | 0.843 | 0.717 |
+| **12** | **0.3374** | **0.844** | **0.726** |
+| 20 | 0.3351 | 0.847 | 0.724 |
+| 81 | 0.3386 | 0.843 | 0.732 |
 
 Twelve features beat all 78 on every column. They are, in importance order:
 `days_missed_so_far`, `days_since_last_played`, `ailment_class`,
@@ -242,12 +242,12 @@ Per-game return prediction, 2025-26, 7,635 rows, base rate 0.166
 
 | model | AUC | log loss | Brier skill |
 |---|---|---|---|
-| base rate | 0.500 | 0.4513 | — |
-| logistic (L2) | 0.830 | 0.3427 | 0.253 |
-| random forest | 0.834 | 0.3388 | 0.273 |
-| HistGradientBoosting | 0.852 | 0.3187 | 0.304 |
-| LightGBM | 0.856 | 0.3156 | 0.310 |
-| LightGBM **+ live report state** | **0.867** | **0.3062** | **0.330** |
+| base rate | 0.500 | 0.4677 | — |
+| logistic (L2) | 0.818 | 0.3656 | 0.233 |
+| random forest | 0.826 | 0.3578 | 0.257 |
+| HistGradientBoosting | 0.838 | 0.3421 | 0.279 |
+| LightGBM | 0.843 | 0.3386 | 0.285 |
+| LightGBM **+ live report state** | **0.858** | **0.3278** | **0.308** |
 
 Boosted trees beat the forest and the linear model clearly and consistently;
 the two boosters are indistinguishable. Adding how the report has *moved*
@@ -272,16 +272,16 @@ Median point estimate:
 
 | model | MAE | MAE (spells ≥5 games) | C-index |
 |---|---|---|---|
-| KM global | 2.74 | 10.74 | 0.500 |
-| KM by region | 2.93 | 10.09 | 0.548 |
-| KM by ailment | 2.60 | 9.12 | 0.685 |
-| KM by region × ailment | 2.47 | 8.72 | 0.677 |
-| KM by region × ailment × status | 2.58 | 8.04 | 0.688 |
-| hazard, logistic | 4.08 | 10.51 | 0.722 |
-| LightGBM, observed spells only | **2.33** | 8.51 | 0.731 |
-| hazard, random forest | 2.52 | 9.08 | 0.728 |
-| hazard, LightGBM | 2.67 | 7.98 | 0.744 |
-| **hazard, HistGradientBoosting** | 2.55 | **7.94** | **0.744** |
+| KM global | 2.82 | 10.68 | 0.500 |
+| KM by region | 2.90 | 10.38 | 0.535 |
+| KM by ailment | 2.57 | 8.72 | 0.679 |
+| KM by region × ailment | 2.54 | 8.92 | 0.667 |
+| KM by region × ailment × status | 2.59 | 8.27 | 0.680 |
+| hazard, logistic | 3.71 | 9.99 | 0.706 |
+| LightGBM, observed spells only | **2.39** | 8.38 | 0.732 |
+| hazard, random forest | 2.57 | 9.30 | 0.722 |
+| hazard, LightGBM | 2.65 | 8.31 | 0.732 |
+| **hazard, HistGradientBoosting** | 2.69 | **8.27** | **0.729** |
 
 Calibration of the LightGBM hazard survival curve, Brier skill against the
 base rate (`reports/horizon_brier.csv`): **0.244** at 1 game, **0.261** at 3,
@@ -319,11 +319,11 @@ Honest subpopulation figures, because the headline is flattered by easy cases
 
 | population | n | observed | actual KM mean | C-index | MAE (median pred) |
 |---|---|---|---|---|---|
-| all test spells | 1,581 | 80% | 9.3 | 0.744 | 2.67 |
-| fresh injuries (last played ≤4 days ago) | 1,366 | 85% | 6.4 | 0.715 | 2.13 |
-| rotation players (≥15 min/game) | 1,344 | 86% | 7.5 | 0.726 | 2.38 |
-| **fresh AND rotation** | 1,230 | 88% | 5.7 | **0.701** | **2.03** |
-| already-running absences (gap >10 days) | 112 | 54% | 27.4 | 0.684 | 10.02 |
+| all test spells | 1,586 | 88% | 7.7 | 0.732 | 2.65 |
+| fresh injuries (last played ≤4 days ago) | 1,386 | 91% | 5.5 | 0.707 | 2.20 |
+| rotation players (≥15 min/game) | 1,346 | 90% | 6.7 | 0.718 | 2.46 |
+| **fresh AND rotation** | 1,240 | 92% | 5.3 | **0.696** | **2.13** |
+| already-running absences (gap >10 days) | 103 | 65% | 23.9 | 0.750 | 8.61 |
 
 The cleanest number — a genuinely new injury to a player who was in the
 rotation — is **C-index 0.701 and a median-prediction MAE of 2.03 games**.
