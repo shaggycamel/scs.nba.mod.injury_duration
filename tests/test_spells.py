@@ -5,13 +5,19 @@ import polars as pl
 from injury_duration.spells import _bridge_report_gaps
 
 
-def _row(state: str, status: str = "", category: str | None = None) -> dict:
+def _row(
+    state: str,
+    status: str = "",
+    category: str | None = None,
+    has_next_stint: bool = False,
+) -> dict:
     return {
         "state": state,
         "status_clean": status,
         "reason_category": category,
         "reason": None if category is None else f"Injury/Illness - {category}",
         "played": state == "played",
+        "has_next_stint": has_next_stint,
     }
 
 
@@ -26,11 +32,13 @@ def _panel(rows: list[dict]) -> pl.DataFrame:
             "reason_category": [r["reason_category"] for r in rows],
             "reason": [r["reason"] for r in rows],
             "played": [r["played"] for r in rows],
+            "has_next_stint": [r["has_next_stint"] for r in rows],
         }
     )
 
 
 OUT = _row("out", "Out", "injury")
+OUT_TRADE = _row("out", "Out", "injury", has_next_stint=True)
 GAP = _row("unlisted_absent")
 AVAILABLE = _row("missed_Available", "Available", "roster")
 PLAYED = _row("played")
@@ -68,4 +76,15 @@ def test_gap_before_a_censor_is_not_bridged() -> None:
 
 def test_gap_between_two_health_outs_is_bridged() -> None:
     out = _bridge_report_gaps(_panel([OUT, GAP, OUT]))
+    assert out["is_bridged"].sum() == 1
+
+
+def test_trade_gap_gets_the_wider_allowance() -> None:
+    rows = [OUT_TRADE, GAP, GAP, GAP, GAP, GAP, OUT]
+    out = _bridge_report_gaps(_panel(rows))
+    assert out["is_bridged"].sum() == 5
+
+
+def test_new_team_roster_row_is_a_trade_transition() -> None:
+    out = _bridge_report_gaps(_panel([OUT_TRADE, CENSOR, OUT]))
     assert out["is_bridged"].sum() == 1

@@ -69,8 +69,8 @@ snapshot is accepted.
    build has passed; the production switch and daily-job deployment are still
    pending.
 9. **Then** move to the label branch and finish the report-gap/trade work.
-   `injury-label-fix` now has the report-gap / Available-DNP bridge; the trade
-   merge is still open.
+   `injury-label-fix` now has the report-gap / Available-DNP bridge and the
+   roster-backed trade continuation.
 
 ## Important
 
@@ -80,6 +80,6 @@ snapshot is accepted.
   already exists.
 - The 29 cross-team extras are accepted for training (0.007% of played keys).
 - `injury-label-fix` is now on the remote. It contains the report-gap /
-  Available-DNP bridge; the trade merge is still open. Do not mix it into this
-  branch until the view snapshot is deployed.
+  Available-DNP bridge and the roster-backed trade continuation. Do not mix it
+  into this branch until the view snapshot is deployed.
 - 2026-27 remains out-of-sample; do not tune on it.
