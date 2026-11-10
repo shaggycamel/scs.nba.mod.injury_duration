@@ -140,9 +140,10 @@ and the column mapping are the necessary work.
 - Multiple legitimate same-team stints are kept.
 - A stable `stint_id` exists on local Postgres.
 
-Current local state: 10,875 stints, 0 invalid windows, 0 overlaps, and every
-regular-season played player-game covered. Cockroach: 10,876 stints, 0 missing,
-0 invalid, 0 overlaps.
+Current Cockroach state: 10,949 stints, 0 missing box stints, 0 missing
+injury-report stints, 0 invalid windows, 0 overlaps. The backfill now adds
+stints evidenced only by the injury report, for players traded while injured
+who never played for the new team.
 
 The backfill and validation live in
 `nba/database/scripts/backfill_team_roster.py`. It is idempotent and supports
