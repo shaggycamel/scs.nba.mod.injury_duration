@@ -69,6 +69,8 @@ snapshot is accepted.
    build has passed; the production switch and daily-job deployment are still
    pending.
 9. **Then** move to the label branch and finish the report-gap/trade work.
+   `injury-label-fix` now has the report-gap / Available-DNP bridge; the trade
+   merge is still open.
 
 ## Important
 
@@ -77,7 +79,7 @@ snapshot is accepted.
 - `team_roster_vw` is required in all three fetch scripts; `paths.ROSTER`
   already exists.
 - The 29 cross-team extras are accepted for training (0.007% of played keys).
-- The WIP `spells.py` label edit is stashed on `injury-label-fix`; that branch
-  is not on the remote, so it must be located or recreated. Do not mix it into
-  this branch.
+- `injury-label-fix` is now on the remote. It contains the report-gap /
+  Available-DNP bridge; the trade merge is still open. Do not mix it into this
+  branch until the view snapshot is deployed.
 - 2026-27 remains out-of-sample; do not tune on it.
