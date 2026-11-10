@@ -112,30 +112,31 @@ def main() -> None:
         "nba/injuries": f"""
             SELECT game_date, game_id, matchup, team, team_slug, player_name,
                    nba_id, status, reason
-            FROM nba.injuries
+            FROM nba.injuries_vw
             WHERE game_date <= (
-                SELECT max(game_date) FROM nba.league_game_schedule
+                SELECT max(game_date) FROM nba.league_game_schedule_vw
                 WHERE season = '{through}'
             )
         """,
         "nba/league_game_schedule": f"""
             SELECT season_type, season, game_id, game_date, matchup, team,
                    opponent, home, team_winner
-            FROM nba.league_game_schedule
+            FROM nba.league_game_schedule_vw
             WHERE season <= '{through}'
         """,
         "nba/player_box_score": f"""
-            SELECT game_id, team_id, player_id, player_name, min, comment,
+            SELECT DISTINCT game_id, team_id, player_id::BIGINT AS player_id,
+                   player_name, min, inj_reason AS comment,
                    usg_pct, pts, poss, pace
-            FROM nba.player_box_score
-            WHERE player_id IN ({ids})
+            FROM nba.player_box_score_vw
+            WHERE min > 0 AND player_id::BIGINT IN ({ids})
         """,
         "nba/player_info": f"""
             SELECT {", ".join(PLAYER_INFO_COLUMNS)}
-            FROM nba.player_info
+            FROM nba.player_info_vw
             WHERE season <= '{through}'
         """,
-        "nba/teams": f"SELECT {', '.join(TEAMS_COLUMNS)} FROM nba.teams",
+        "nba/teams": f"SELECT {', '.join(TEAMS_COLUMNS)} FROM nba.teams_vw",
         "util/player_id_map_vw": "SELECT * FROM util.player_id_map_vw",
     }
 

@@ -83,7 +83,7 @@ def main() -> None:
     season = args.season
     bounds = hub.db.read(
         f"SELECT min(game_date) AS first, max(game_date) AS last "
-        f"FROM nba.league_game_schedule WHERE season = '{season}'"
+        f"FROM nba.league_game_schedule_vw WHERE season = '{season}'"
     ).row(0, named=True)
     first, last = bounds["first"], bounds["last"]
     if first is None:
@@ -93,28 +93,31 @@ def main() -> None:
         "nba/league_game_schedule": f"""
             SELECT season_type, season, game_id, game_date, matchup, team,
                    opponent, home, team_winner
-            FROM nba.league_game_schedule
+            FROM nba.league_game_schedule_vw
             WHERE season = '{season}'
         """,
         "nba/injuries": f"""
             SELECT game_date, game_id, matchup, team, team_slug, player_name,
                    nba_id, status, reason
-            FROM nba.injuries
+            FROM nba.injuries_vw
             WHERE game_date BETWEEN '{first}' AND '{last}'
         """,
         "nba/player_box_score": f"""
-            SELECT game_id, team_id, player_id, player_name, min, comment,
+            SELECT DISTINCT game_id, team_id, player_id::BIGINT AS player_id,
+                   player_name, min, inj_reason AS comment,
                    usg_pct, pts, poss, pace
-            FROM nba.player_box_score
-            WHERE game_id IN (
-                SELECT game_id FROM nba.league_game_schedule WHERE season = '{season}'
-            )
+            FROM nba.player_box_score_vw
+            WHERE min > 0
+              AND game_id IN (
+                  SELECT game_id FROM nba.league_game_schedule_vw
+                  WHERE season = '{season}'
+              )
         """,
         "nba/player_info": f"""
             SELECT {", ".join(PLAYER_INFO_COLUMNS)}
-            FROM nba.player_info WHERE season <= '{season}'
+            FROM nba.player_info_vw WHERE season <= '{season}'
         """,
-        "nba/teams": f"SELECT {', '.join(TEAMS_COLUMNS)} FROM nba.teams",
+        "nba/teams": f"SELECT {', '.join(TEAMS_COLUMNS)} FROM nba.teams_vw",
         "util/player_id_map_vw": "SELECT * FROM util.player_id_map_vw",
     }
     for rel, sql in queries.items():
