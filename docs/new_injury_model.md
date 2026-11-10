@@ -97,6 +97,33 @@ fix the team condition in the existing view rather than adding a new object.
 The material risk is the roster-expanded DNP rows: they must be filtered with
 `min > 0` so the model does not treat a DNP as a played game.
 
+### 2.5 Remaining view wiring
+
+The view layer is sufficient as a data contract, but the injury fetch still
+reads raw tables. Required before switching the model:
+
+1. Update `00_fetch.py`, `16_lean_fetch.py`, and `18_active_spells.py` to the
+   view layer:
+   - `nba.injuries` -> `nba.injuries_vw`
+   - `nba.league_game_schedule` -> `nba.league_game_schedule_vw`
+   - `nba.player_box_score` -> `nba.player_box_score_vw`
+   - `nba.player_info` -> `nba.player_info_vw`
+   - `nba.teams` -> `nba.teams_vw`
+   - `nba.player_season_stats` -> removed
+2. Map the box-score view correctly:
+   - `WHERE min > 0`
+   - deduplicate on `(game_id, player_id)`
+   - `inj_reason AS comment`
+   - cast `player_id` to `BIGINT`
+   - keep `team_id` and `game_id`
+3. Run a view-only fetch to a scratch directory, build with
+   `INJURY_DURATION_DATA=<scratch>`, and compare spell count, event rate, censor
+   reasons, panel rows, hazard rows, and feature columns with the raw build.
+4. Only then switch the production snapshot and rebuild the model.
+
+No new view is required. The 29 cross-team extras are accepted; the DNP filter
+and the column mapping are the necessary work.
+
 ---
 
 ## 3. Clean roster contract
@@ -363,6 +390,12 @@ only fair way to tune the live model and calibration layer.
 - [x] Fix `scs_hub.nba.get_team_roster` (first snapshot, departures); no test
   suite exists in `scs_hub` yet.
 - [x] Add `backfill_team_roster.py` to the repo and document it.
+- [ ] Switch `00_fetch.py`, `16_lean_fetch.py`, and `18_active_spells.py` to the
+  view layer.
+- [ ] Map `player_box_score_vw`: `WHERE min > 0`, deduplicate, `inj_reason AS
+  comment`, cast `player_id` to `BIGINT`.
+- [ ] Run the view-only fetch/build parity check against the raw build.
+- [ ] Switch the production snapshot only after parity passes.
 
 ### Phase 1 — Labels and rebuild
 
@@ -427,6 +460,8 @@ only fair way to tune the live model and calibration layer.
 ## 10. Definition of done
 
 - Model reads only the view layer; no raw `nba.*` table outside views.
+- All three fetch scripts use the view layer, and the box view is filtered to
+  `min > 0` and deduplicated.
 - The existing `player_box_score_vw`, filtered to `min > 0` and deduplicated,
   covers all played player-games.
 - `team_roster` has clean stints, no overlaps, and the null-date pattern.
