@@ -68,6 +68,12 @@ def health_missed(categories: tuple[str, ...] = CONTINUE_CATEGORIES) -> pl.Expr:
 def load_report() -> tuple[pl.DataFrame, dict]:
     """Report rows, deduplicated, re-keyed to a player id, with reason parsed."""
     raw = pl.read_parquet(paths.INJURIES).unique()
+    if "raw_name" in raw.columns:
+        # The view keeps the source name separate so a missing crosswalk stays
+        # visible. Fall back to it only when the conformed name is absent.
+        raw = raw.with_columns(pl.coalesce("player_name", "raw_name").alias("player_name")).drop(
+            "raw_name"
+        )
     resolved, diag = ids.resolve_player_ids(raw)
     out = (
         resolved.with_columns(taxonomy.reason_features())
@@ -179,13 +185,38 @@ def build_panel() -> tuple[pl.DataFrame, dict]:
 
     # The player-game universe: every game at which the player was either in
     # the box score or on their team's report, plus the games in between (a
-    # player can be neither for a stretch, e.g. a report gap).
-    events = pl.concat(
-        [
-            rep.select("season", "team_slug", "player_id", "team_game_idx"),
-            box.select("season", "team_slug", "player_id", "team_game_idx"),
-        ]
-    ).unique()
+    # player can be neither for a stretch, e.g. a report gap). The roster
+    # stint extends that window across DNP games and to the season edges, so a
+    # played-only box view does not censor a spell just because the player had
+    # no later box row.
+    event_parts = [
+        rep.select("season", "team_slug", "player_id", "team_game_idx"),
+        box.select("season", "team_slug", "player_id", "team_game_idx"),
+    ]
+    if paths.ROSTER.exists():
+        roster = pl.read_parquet(
+            paths.ROSTER,
+            columns=["season", "team_slug", "player_id", "entry_date", "exit_date"],
+        )
+        # Only extend stints for players we have actually seen on that team.
+        # A roster row alone is not evidence that the player was available or
+        # expected to play (injured list, G League, inactive).
+        seen = pl.concat(event_parts).select("season", "team_slug", "player_id").unique()
+        roster_games = (
+            seen.join(roster, on=["season", "team_slug", "player_id"], how="inner")
+            .join(
+                cal.select("season", "team_slug", "team_game_idx", "game_date"),
+                on=["season", "team_slug"],
+                how="inner",
+            )
+            .filter(
+                (pl.col("game_date") >= pl.col("entry_date"))
+                & (pl.col("game_date") < pl.col("exit_date"))
+            )
+            .select("season", "team_slug", "player_id", "team_game_idx")
+        )
+        event_parts.append(roster_games)
+    events = pl.concat(event_parts).unique()
     windows = events.group_by("season", "team_slug", "player_id").agg(
         pl.col("team_game_idx").min().alias("lo"),
         pl.col("team_game_idx").max().alias("hi"),

@@ -12,68 +12,72 @@ the read-only view layer. Do this **before** the label fixes.
   - `nba.league_game_schedule_vw`
   - `nba.player_box_score_vw`
   - `nba.player_info_vw`
+  - `nba.team_roster_vw`
   - `nba.teams_vw`
   - `util.player_id_map_vw`
   - `util.unmatched_player_source_vw`
 - The box query filters `min > 0`, deduplicates, aliases `inj_reason AS comment`,
   and casts `player_id` to `BIGINT`.
-- `nba.injuries_vw` now falls back to the raw report name when the crosswalk has
-  no `nba_id`; this fixed the biggest parity break.
+- `nba.injuries_vw` exposes `raw_name`; the fetch selects it and `load_report`
+  uses `player_name` first, falling back to `raw_name` only when the crosswalk
+  is missing.
+- `build_panel` extends player windows with `team_roster_vw`, but only for
+  players actually seen on that team. This covers DNP games and the season
+  edges without treating every inactive roster row as an absence.
+- `scs.nba.database` was fixed so `player_box_score_vw` and `team_roster_vw`
+  use the full schedule window (preseason, regular season and playoffs).
+  The previous regular-season-only window was dropping playoff box rows, which
+  censored playoff returns.
 - Ruff passes on all three scripts.
 
 ## Current parity result
 
+Raw build is `main` @ `635c4e0` against the raw tables; view build is this
+branch against the live views, both at the 2025-26 cutoff.
+
 | Metric | Raw build | View build |
 |---|---:|---:|
-| Spells | 6,754 | 6,757 |
-| Regular-season spells | 6,600 | 6,547 |
-| Playoff spells | 154 | 210 |
-| Hazard rows | 34,064 | 34,275 |
-| Panel rows | 225,296 | 212,160 |
+| Spells | 6,752 | 6,759 |
+| Regular-season spells | 6,598 | 6,605 |
+| Playoff spells | 154 | 154 |
+| Hazard rows | 34,063 | 34,404 |
+| Panel rows | 225,163 | 236,104 |
+| Event rate | 77.8% | 77.5% |
 | Features | 71 | 71 |
 
-The remaining difference is mainly the panel: the raw build uses raw **DNP box
-rows** to extend player windows; the played-only view does not have them.
-Playoff coverage also differs. The all-box-rows variant was worse (6,767 spells,
-234,497 panel rows), so `min > 0` is the right box filter.
+The panel is larger because the roster covers DNP games that the played-only
+box view does not. That is the intended panel construction. At spell level,
+6,369 spells match, 383 are raw-only, 390 are view-only, and only 14 outcomes
+change. The 2025-26 test on the view build gives hazard histgb C-index 0.744
+versus 0.743 raw, and MAE 2.578 versus 2.561; lightgbm is also 0.744. The view
+snapshot is accepted.
 
 ## Ordered steps
 
-1. **Review the fetch diff** on this branch:
-   ```bash
-   git diff -- scripts/00_fetch.py scripts/16_lean_fetch.py scripts/18_active_spells.py
-   ```
-2. **Confirm the local view layer is up to date.** Required views:
-   `injuries_vw`, `league_game_schedule_vw`, `player_box_score_vw`,
-   `player_info_vw`, `teams_vw`, `team_roster_vw`, `daily_standings_vw`.
-3. **Run the view-only fetch** to a scratch directory:
-   ```bash
-   uv run --group data python scripts/00_fetch.py \
-     --db-con postgres --out data/views_check
-   ```
-4. **Build the view snapshot:**
-   ```bash
-   INJURY_DURATION_DATA=data/views_check uv run python scripts/01_build.py \
-     --diagnostics-out artifacts/views_check_build_diagnostics.json
-   ```
-5. **Compare against `data/build`:** spells, regular-season spells, event rate,
-   censor reasons, panel rows, hazard rows, feature columns.
-6. **Decide the panel construction.** Two viable paths:
-   - accept the ~0.8% regular-spell difference and document it; or
-   - change panel construction to use the cleaned `nba.team_roster` and schedule
-     instead of box DNP rows, then rerun parity. This matches the new model
-     direction and is the preferred fix.
-7. **Do not switch the production snapshot** until step 6 is decided and the
-   parity result is accepted.
-8. If accepted, replace the production snapshot with the view snapshot, rebuild,
-   and re-run the 2025-26 test. Do not refit or publish until that passes.
+1. **Review the fetch diff** — done.
+2. **Confirm the local view layer is up to date** — Cockroach is current;
+   local Postgres still needs the six views and the injury backfill.
+3. **Run the view-only fetch** — done against `cockroach-read` into
+   `data/views_check`.
+4. **Build the view snapshot** — done.
+5. **Compare against the raw build** — done; see the table above.
+6. **Decide the panel construction** — use `team_roster_vw` plus schedule
+   (done in `spells.py`).
+7. **Accept the parity result** — accepted.
+8. **Switch the production snapshot** — replace the production snapshot with
+   the view snapshot, rebuild, and re-run the 2025-26 test. The scratch view
+   build has passed; the production switch and daily-job deployment are still
+   pending.
 9. **Then** move to the label branch and finish the report-gap/trade work.
 
 ## Important
 
 - No new `player_box_score_played_vw`. Use `nba.player_box_score_vw` with
   `min > 0`.
+- `team_roster_vw` is required in all three fetch scripts; `paths.ROSTER`
+  already exists.
 - The 29 cross-team extras are accepted for training (0.007% of played keys).
-- The WIP `spells.py` label edit is stashed on `injury-label-fix`; do not mix it
-  into this branch.
+- The WIP `spells.py` label edit is stashed on `injury-label-fix`; that branch
+  is not on the remote, so it must be located or recreated. Do not mix it into
+  this branch.
 - 2026-27 remains out-of-sample; do not tune on it.

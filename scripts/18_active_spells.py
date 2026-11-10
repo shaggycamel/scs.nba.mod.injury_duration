@@ -98,7 +98,7 @@ def main() -> None:
         """,
         "nba/injuries": f"""
             SELECT game_date, game_id, matchup, team, team_slug, player_name,
-                   nba_id, status, reason
+                   raw_name, nba_id, status, reason
             FROM nba.injuries_vw
             WHERE game_date BETWEEN '{first}' AND '{last}'
         """,
@@ -116,6 +116,12 @@ def main() -> None:
         "nba/player_info": f"""
             SELECT {", ".join(PLAYER_INFO_COLUMNS)}
             FROM nba.player_info_vw WHERE season <= '{season}'
+        """,
+        "nba/team_roster": f"""
+            SELECT season, team_id, team_slug, player_id::BIGINT AS player_id,
+                   player_name, raw_name, "position", entry_date, exit_date
+            FROM nba.team_roster_vw
+            WHERE season = '{season}'
         """,
         "nba/teams": f"SELECT {', '.join(TEAMS_COLUMNS)} FROM nba.teams_vw",
         "util/player_id_map_vw": "SELECT * FROM util.player_id_map_vw",
