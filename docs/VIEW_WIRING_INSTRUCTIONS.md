@@ -64,13 +64,12 @@ snapshot is accepted.
 6. **Decide the panel construction** — use `team_roster_vw` plus schedule
    (done in `spells.py`).
 7. **Accept the parity result** — accepted.
-8. **Switch the production snapshot** — replace the production snapshot with
-   the view snapshot, rebuild, and re-run the 2025-26 test. The scratch view
-   build has passed; the production switch and daily-job deployment are still
-   pending.
+8. **Switch the production snapshot** — done. The Jetson is on `main`, the
+   refit bundle is deployed, and the 2026-11-11 daily run published 99 rows
+   through `mod.injury_daily_forecast`.
 9. **Then** move to the label branch and finish the report-gap/trade work.
-   `injury-label-fix` now has the report-gap / Available-DNP bridge and the
-   roster-backed trade continuation.
+   Done: `injury-label-fix` has the report-gap / Available-DNP bridge and the
+   roster-backed trade continuation, and is merged to `main`.
 
 ## Important
 
