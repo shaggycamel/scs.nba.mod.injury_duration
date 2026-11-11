@@ -65,7 +65,9 @@ CREATE TABLE IF NOT EXISTS {TABLE} (
 # A daily forecast is a snapshot; without this join its `actual_*` columns stay
 # null forever. The live return is the first game the player played after the
 # spell began in that season, and the missed-game count follows the player's
-# roster stints so a mid-absence trade is counted correctly.
+# roster stints so a mid-absence trade is counted correctly. The box lookup
+# uses the raw table rather than `player_box_score_vw`: `min > 0` already
+# selects played games, and the raw table makes the live join much faster.
 VIEW_SQL = f"""
 CREATE OR REPLACE VIEW {PUBLIC_TABLE} AS
 WITH spells AS (
