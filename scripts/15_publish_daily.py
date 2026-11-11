@@ -4,7 +4,9 @@ This is the one-off/repeatable writer for the results already on disk. It
 replaces the season's rows in a single transaction, so rerunning after a
 correction is safe. The public view is a live join: it fills the actual
 return date and games missed from the box score and roster once the outcome
-is known, because a daily forecast row is written before that.
+is known, because a daily forecast row is written before that. The view is
+installed once and only replaced with `--view-only`; daily publishes just
+write rows.
 
 Usage:
     uv run --group data python scripts/15_publish_daily.py
@@ -210,6 +212,23 @@ def _refresh_view(conn) -> None:
     conn.execute(text(f"REVOKE SELECT ON {TABLE} FROM kobe_public"))
 
 
+def _ensure_view(conn) -> None:
+    """Install the view on a fresh database; never replace it on a daily run.
+
+    A view is just SQL over the base table, so it automatically reflects new
+    rows and live box scores. The definition only needs replacing when the
+    code changes, which is what `--view-only` is for.
+    """
+    exists = conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.views "
+            "WHERE table_schema = 'mod' AND table_name = 'injury_daily_forecast'"
+        )
+    ).first()
+    if exists is None:
+        _refresh_view(conn)
+
+
 def main() -> None:
     args = parse_args()
     if args.view_only:
@@ -283,7 +302,7 @@ def main() -> None:
         conn.execute(text(DDL))
         conn.execute(text(f"DELETE FROM {TABLE} WHERE {where}"))
         out.write_database(TABLE, conn, if_table_exists="append")
-        _refresh_view(conn)
+        _ensure_view(conn)
 
     count = hub.db.read(f"SELECT count(*) AS n FROM {PUBLIC_TABLE} WHERE {where}").item()
     suffix = f" on {replace_date}" if replace_date else ""

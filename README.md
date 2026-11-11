@@ -158,7 +158,9 @@ is a live join over the published base table: for any spell whose outcome was
 not known when its row was written, it fills `actual_return_date`,
 `actual_games_missed`, `return_seen` and `censored` from the box score and
 roster once the player returns. A still-active spell stays null and censored
-until its return game is played.
+until its return game is played. The view is schema, not a daily artifact: a
+daily publish only writes rows, and `--view-only` is for changing the view
+definition.
 
 ## Lean inference experiment
 
