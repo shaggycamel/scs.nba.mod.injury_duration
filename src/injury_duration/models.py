@@ -200,6 +200,24 @@ class HazardModel:
         return self._model.predict_proba(self._matrix(rows))[:, 1]
 
 
+@dataclass
+class HazardEnsemble:
+    """Average the per-game hazards of several fitted models.
+
+    The members use different encodings (LightGBM native categories, HistGB
+    one-hot plus imputation), so each keeps its own `Design`. Averaging the
+    probabilities is the simplest ensemble that cannot leak the target.
+    """
+
+    models: list[HazardModel]
+    name: str = "ensemble"
+
+    def hazard(self, rows: pl.DataFrame) -> np.ndarray:
+        if not self.models:
+            raise RuntimeError("fit first")
+        return np.mean([model.hazard(rows) for model in self.models], axis=0)
+
+
 # Horizons, in days, for the "will he be available by then" answers.
 DAY_HORIZONS = (7, 14, 21, 30, 60)
 

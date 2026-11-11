@@ -33,6 +33,30 @@ def fit(design: pl.DataFrame, cols: list[str], params: dict | None = None) -> mo
     return models.HazardModel("lightgbm", "lightgbm", num, cat, params or BEST_LGBM).fit(design)
 
 
+HISTGB = {
+    "max_iter": 400,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 31,
+    "early_stopping": True,
+    "validation_fraction": 0.15,
+}
+
+
+def fit_ensemble(
+    design: pl.DataFrame,
+    cols: list[str],
+    params: dict | None = None,
+) -> models.HazardEnsemble:
+    """LightGBM + HistGB, each with its own encoder."""
+    num, cat = ex.split_numeric_categorical(cols)
+    return models.HazardEnsemble(
+        [
+            models.HazardModel("lightgbm", "lightgbm", num, cat, params or BEST_LGBM).fit(design),
+            models.HazardModel("histgb", "histgb", num, cat, HISTGB).fit(design),
+        ]
+    )
+
+
 def forecast_at_onset(
     model: models.HazardModel,
     spell_features: pl.DataFrame,

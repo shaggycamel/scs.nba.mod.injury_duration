@@ -35,6 +35,11 @@ def parse_args() -> argparse.Namespace:
         default="2025-26",
         help="last season used for the final fit (default: 2025-26)",
     )
+    parser.add_argument(
+        "--ensemble",
+        action="store_true",
+        help="fit LightGBM + HistGB and average their hazards",
+    )
     return parser.parse_args()
 
 
@@ -81,15 +86,20 @@ def main() -> None:
 
     onset_cols = ex.index_feature_cols()
     live_cols = ex.dynamic_feature_cols()
-    onset = forecast.fit(train, onset_cols)
-    live = forecast.fit(train, live_cols)
+    fitter = forecast.fit_ensemble if args.ensemble else forecast.fit
+    onset = fitter(train, onset_cols)
+    live = fitter(train, live_cols)
 
     metadata = persist.build_metadata(
         seasons=sorted(train["season"].unique().to_list()),
         rows=train.height,
         spells=int(d["features"].filter(pl.col("season") <= args.through).height),
         features={"onset": onset_cols, "live": live_cols},
-        params={"onset": forecast.BEST_LGBM, "live": forecast.BEST_LGBM},
+        params={
+            "onset": forecast.BEST_LGBM,
+            "live": forecast.BEST_LGBM,
+            "ensemble": args.ensemble,
+        },
         metrics=held_out_metrics(),
         git_commit=git_commit(),
     )

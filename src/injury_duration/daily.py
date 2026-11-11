@@ -13,6 +13,7 @@ leak into today's prediction.
 
 from __future__ import annotations
 
+import math
 from datetime import date, timedelta
 
 import polars as pl
@@ -127,8 +128,11 @@ def _impute_missing_history(states: pl.DataFrame, model: models.HazardModel) -> 
     the row so the caller can see it.
     """
     no_history = pl.col("career_games").is_null() | (pl.col("career_games") == 0)
-    med = {c: v for c, v in model._design.medians.items() if c in states.columns}
-    cats = [c for c in model._design.categorical if c in states.columns]
+    design = getattr(model, "_design", None)
+    if design is None:
+        design = model.models[0]._design
+    med = {c: v for c, v in design.medians.items() if c in states.columns}
+    cats = [c for c in design.categorical if c in states.columns]
     numeric = [
         pl.when(no_history)
         .then(pl.col(c).cast(pl.Float64, strict=False).fill_null(float(med[c])))
@@ -255,7 +259,17 @@ def forecast_daily(
         grid.group_by("state_id")
         .agg(
             pl.col("step").filter(pl.col("cum_return") >= 0.5).min().alias("median_step"),
+            pl.col("step").filter(pl.col("cum_return") >= 0.1).min().alias("q10_step"),
+            pl.col("step").filter(pl.col("cum_return") >= 0.25).min().alias("q25_step"),
+            pl.col("step").filter(pl.col("cum_return") >= 0.75).min().alias("q75_step"),
+            pl.col("step").filter(pl.col("cum_return") >= 0.9).min().alias("q90_step"),
             (1 + pl.col("surv").sum()).alias("mean_games"),
+            (
+                -(
+                    pl.col("p_return").filter(pl.col("p_return") > 0)
+                    * pl.col("p_return").filter(pl.col("p_return") > 0).log()
+                ).sum()
+            ).alias("_entropy_body"),
             pl.col("p_return").first().alias("p_return_next_game"),
             pl.col("p_return")
             .filter((pl.col("future_date") - pl.col("prediction_date")).dt.total_days() <= 7)
@@ -273,6 +287,22 @@ def forecast_daily(
                 pl.col("future_date").filter(pl.col("cum_return") >= 0.5).min(),
                 pl.col("future_date").max(),
             ).alias("pred_return_date_median"),
+            pl.coalesce(
+                pl.col("future_date").filter(pl.col("cum_return") >= 0.1).min(),
+                pl.col("future_date").max(),
+            ).alias("pred_return_date_q10"),
+            pl.coalesce(
+                pl.col("future_date").filter(pl.col("cum_return") >= 0.25).min(),
+                pl.col("future_date").max(),
+            ).alias("pred_return_date_q25"),
+            pl.coalesce(
+                pl.col("future_date").filter(pl.col("cum_return") >= 0.75).min(),
+                pl.col("future_date").max(),
+            ).alias("pred_return_date_q75"),
+            pl.coalesce(
+                pl.col("future_date").filter(pl.col("cum_return") >= 0.9).min(),
+                pl.col("future_date").max(),
+            ).alias("pred_return_date_q90"),
             pl.col("_mean_ord").first().alias("_mean_ord"),
             pl.col("_tail").first().alias("_tail"),
             pl.col("_last_ord").first().alias("_last_ord"),
@@ -283,7 +313,20 @@ def forecast_daily(
                 + pl.col("_tail") * (pl.col("_last_ord") + hz.MEAN_DAYS_BETWEEN_GAMES)
             ).alias("pred_return_date_mean"),
             pl.col("median_step").fill_null(max_k).alias("pred_games_remaining_median"),
+            pl.col("q10_step").fill_null(max_k).alias("pred_games_q10"),
+            pl.col("q25_step").fill_null(max_k).alias("pred_games_q25"),
+            pl.col("q75_step").fill_null(max_k).alias("pred_games_q75"),
+            pl.col("q90_step").fill_null(max_k).alias("pred_games_q90"),
             pl.col("mean_games").alias("pred_games_remaining_mean"),
+            (
+                pl.col("_entropy_body")
+                + pl.when(pl.col("_tail") > 0)
+                .then(-pl.col("_tail") * pl.col("_tail").log())
+                .otherwise(0.0)
+            ).alias("prediction_entropy"),
+        )
+        .with_columns(
+            (pl.col("prediction_entropy") / math.log(max_k + 1)).alias("prediction_ambiguity")
         )
     )
 

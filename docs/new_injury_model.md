@@ -458,15 +458,29 @@ only fair way to tune the live model and calibration layer.
 
 ### Phase 4 — Long tail
 
-- [ ] Mixture-cure or competing-risk hazard.
-- [ ] Long-spell MAE/C-index and P(no return this season).
-- [ ] Catastrophic-injury reporting.
+- [x] Mixture-cure / competing-risk components. `long_tail.py` fits:
+  P(long or season-ending), P(no return this season), and cause probabilities
+  (returned / season_end / other censor) on the onset features.
+- [x] Long-spell MAE/C-index and P(no return this season). 2025-26 test:
+  long/season-ending AUC 0.877 / Brier skill 0.274; season-end AUC 0.905 /
+  Brier skill 0.304; cause model accuracy 0.902 with per-cause AUC 0.880 /
+  0.907 / 0.889.
+- [x] Catastrophic-injury reporting. `reports/catastrophic_report.csv` reports
+  P(out past 20), P(no return this season), median and mean games for every
+  catastrophic 2025-26 spell.
 
 ### Phase 5 — Calibration and ensemble
 
-- [ ] Isotonic/Platt by horizon and elapsed bucket.
-- [ ] LightGBM + HistGB/seed ensemble.
-- [ ] Report quantiles and ambiguity.
+- [x] Isotonic/Platt by horizon and elapsed bucket. `20_daily_backtest.py`
+  fits global and bucket-specific isotonic/Platt on 2024-25 and scores
+  2025-26. Isotonic helps 7d/14d slightly and hurts 30d; no production
+  calibration layer is deployed.
+- [x] LightGBM + HistGB/seed ensemble. `HazardEnsemble` averages LightGBM and
+  HistGB. 2025-26 duration median C-index 0.733 (0.732 LightGBM, 0.726 HistGB),
+  MAE 2.644 (2.717 / 2.680); per-game AUC 0.854 and Brier skill 0.303. The
+  production bundle now uses the ensemble.
+- [x] Report quantiles and ambiguity. `forecast_daily` now returns Q10/Q25/
+  Q75/Q90 games and dates, plus prediction entropy and normalized ambiguity.
 
 ### Phase 6 — Shadow and deploy
 
