@@ -130,6 +130,9 @@ def build_daily_states(
         right_on="game_date",
         by="spell_id",
         strategy="backward",
+        # Both sides are sorted explicitly above. Polars cannot verify
+        # sortedness across `by` groups and warns on every run otherwise.
+        check_sortedness=False,
     )
     states = states.filter(pl.col("game_date").is_not_null()).with_columns(
         (pl.col("prediction_date") - pl.col("start_date"))
