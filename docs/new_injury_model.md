@@ -481,6 +481,8 @@ only fair way to tune the live model and calibration layer.
   production bundle now uses the ensemble.
 - [x] Report quantiles and ambiguity. `forecast_daily` now returns Q10/Q25/
   Q75/Q90 games and dates, plus prediction entropy and normalized ambiguity.
+  These are in the daily prediction Parquet; the published table keeps its
+  existing columns.
 
 ### Phase 6 — Shadow and deploy
 
