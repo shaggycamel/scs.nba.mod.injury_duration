@@ -138,10 +138,10 @@ player-day with `prediction_date`, predicted return date and remaining games,
 P(return next game / within 7 / 14 / 30 days), and the actual return fields for
 evaluation. A report row is used only once its game date has arrived; the next
 game's report cannot leak into an earlier prediction. Predictions stop the day
-before a return or censor event, and season-end censoring runs to the data
-cutoff. Players with no NBA history are flagged `history_imputed`; their
-attribute and workload nulls are filled with training medians so a two-way
-debut does not produce a 90-game forecast.
+before a return or censor event, and never run past the latest observed report
+date; season-end censoring runs to that cutoff. Players with no NBA history are
+flagged `history_imputed`; their attribute and workload nulls are filled with
+training medians so a two-way debut does not produce a 90-game forecast.
 
 ## Published table
 

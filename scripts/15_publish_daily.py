@@ -160,6 +160,19 @@ def main() -> None:
     ).select(COLUMNS)
 
     hub = scs_hub.SportsHub(db_con=args.db_con)
+    latest_report = hub.db.read(
+        f"SELECT max(game_date) AS d FROM nba.injuries_vw WHERE season = '{args.season}'"
+    ).item()
+    latest_prediction = out["prediction_date"].max()
+    if (
+        latest_report is not None
+        and latest_prediction is not None
+        and latest_prediction > latest_report
+    ):
+        raise SystemExit(
+            f"refusing to publish prediction_date {latest_prediction}, later than the "
+            f"latest injury report {latest_report}"
+        )
     if args.append:
         replace_date = args.prediction_date or out["prediction_date"].max()
         out = out.filter(pl.col("prediction_date") == replace_date)

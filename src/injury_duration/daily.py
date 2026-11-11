@@ -41,6 +41,11 @@ def build_daily_states(
     `through` forces predictions to the data cutoff even when a spell has a
     non-null next_date. The daily job uses it for active spells; the historical
     backfill leaves it unset and stops the day before the return/censor event.
+
+    No prediction date may pass `cutoff`: a later date has no observed report
+    state and is a future forecast, not an as-of row. That matters when the
+    next scheduled game is after the cutoff, because the day-before boundary
+    would otherwise run into the future.
     """
     design = ex.hazard_design(rows, features).filter(
         pl.col("spell_id").is_in(spells["spell_id"].to_list())
@@ -65,11 +70,15 @@ def build_daily_states(
         # a G League assignment, a trade or a dropped report. Predictions stop
         # the day before it. Only a season-end censor has no next date, and
         # those predictions continue to the data cutoff.
-        if through is not None:
-            end = through
-        else:
-            end = r["next_date"] - timedelta(days=1) if r["next_date"] else cutoff
+        limit = through if through is not None else cutoff
+        end = limit
+        if through is None and r["next_date"] is not None:
+            end = r["next_date"] - timedelta(days=1)
         end = max(end, r["last_missed_date"])
+        # Never predict past the observation limit. For a spell whose next
+        # game is after the cutoff, the day-before boundary above points into
+        # the future; without this clamp the backfill emits those dates.
+        end = min(end, limit)
         if end < r["start_date"]:
             continue
         d = r["start_date"]

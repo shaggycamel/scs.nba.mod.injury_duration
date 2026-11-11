@@ -86,6 +86,12 @@ def main() -> None:
     if not out_chunks:
         raise SystemExit(f"no daily states for {args.season!r}")
     out = pl.concat(out_chunks, how="vertical_relaxed")
+    latest = out["prediction_date"].max()
+    if latest is not None and latest > cutoff:
+        raise SystemExit(
+            f"backfill produced prediction dates through {latest}, past the observed "
+            f"cutoff {cutoff}; refusing to write future rows"
+        )
     out = out.with_columns(
         pl.when(pl.col("event") == 1)
         .then(pl.col("next_date"))
