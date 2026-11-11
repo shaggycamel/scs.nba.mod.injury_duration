@@ -29,6 +29,21 @@ def _date_from_days(expr: pl.Expr) -> pl.Expr:
     return pl.lit(EPOCH) + pl.duration(days=expr.round().cast(pl.Int64))
 
 
+def observation_cutoff(panel: pl.DataFrame, season: str) -> date | None:
+    """Last date the season has a box score or an injury report.
+
+    The panel extends through roster stints to the end of the schedule, so its
+    maximum game date can be in the future. A row is observed only when the
+    player played or the report named them; `unlisted_absent` rows after the
+    last report are schedule scaffolding, not data.
+    """
+    return (
+        panel.filter(
+            (pl.col("season") == season) & (pl.col("state") != "unlisted_absent")
+        )["game_date"].max()
+    )
+
+
 def build_daily_states(
     spells: pl.DataFrame,
     features: pl.DataFrame,

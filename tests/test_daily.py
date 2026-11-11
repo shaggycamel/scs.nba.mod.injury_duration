@@ -69,3 +69,22 @@ def test_daily_states_respect_through() -> None:
     states = daily.build_daily_states(spells, features, rows, cutoff, through=through)
 
     assert states["prediction_date"].max() == through
+
+
+def test_observation_cutoff_ignores_unobserved_future_games() -> None:
+    panel = pl.DataFrame(
+        {
+            "season": ["2026-27"] * 4 + ["2025-26"],
+            "game_date": [
+                date(2026, 11, 10),
+                date(2026, 11, 11),
+                date(2026, 11, 12),
+                date(2027, 4, 11),
+                date(2026, 6, 13),
+            ],
+            "state": ["out", "played", "unlisted_absent", "unlisted_absent", "out"],
+        }
+    )
+
+    assert daily.observation_cutoff(panel, "2026-27") == date(2026, 11, 11)
+    assert daily.observation_cutoff(panel, "2025-26") == date(2026, 6, 13)
