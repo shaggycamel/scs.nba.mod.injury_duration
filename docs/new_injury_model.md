@@ -79,8 +79,8 @@ still censored, and the model is slightly pessimistic on short absences.
   `nba.teams`: not read by the model; the view layer replaces them.
 - `nba.player_season_stats`: not used by the model. Dropped from the fetch and
   the data-quality audit.
-- `nba.injuries_parsed`: not needed. The Python taxonomy is versioned with the
-  model; the database map is an independent moving part.
+- `nba.injuries_parsed_vw`: the model does not read it; it is kept for other
+  consumers. The Python taxonomy is versioned with the model.
 
 ### 2.4 Box-score decision
 
@@ -361,8 +361,8 @@ only fair way to tune the live model and calibration layer.
 2. **Build** — panel, spells, hazard rows, features, team context.
 3. **Fit** — hazard model(s), rotation stage, calibration.
 4. **Validate** — time splits, daily backtest, promotion gate.
-5. **Publish** — daily forecasts to `mod.injury_daily_forecast` (or a versioned
-   base table).
+5. **Publish** — daily forecasts to `mod.injury_daily_forecast_base`; the
+   public `mod.injury_daily_forecast_vw` is applied from `nba/database`.
 6. **Monitor** — rolling Brier/AUC/C-index by month, injury family, elapsed
    bucket; drift alerts.
 

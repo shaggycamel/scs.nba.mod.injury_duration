@@ -1,5 +1,8 @@
 # View Wiring Instructions
 
+> Archived 2026-11-13; this migration is complete. Current view rules live in
+> `nba/database/sql/views/`.
+
 Status: 2026-11-11. Branch: `views-fetch`.
 
 This is the ordered checklist for switching the injury model from raw tables to

@@ -10,7 +10,7 @@ Sequence:
   2. lean snapshot: target-player box history + all injuries + references
   3. build spells/features on that snapshot
   4. score the latest prediction date
-  5. append that date to mod.injury_daily_forecast
+  5. append that date to mod.injury_daily_forecast_base
 """
 
 from __future__ import annotations

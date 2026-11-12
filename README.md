@@ -145,15 +145,16 @@ debut does not produce a 90-game forecast.
 
 ## Published table
 
-The backfill is published to Cockroach `mod.injury_daily_forecast`, keyed by
-`(prediction_date, spell_id)`:
+The backfill is published to Cockroach `mod.injury_daily_forecast_base`, keyed
+by `(prediction_date, spell_id)`:
 
 ```bash
 uv run --group data python scripts/15_publish_daily.py
 ```
 
 The publisher replaces the season's rows in one transaction, so rerunning after
-a correction is safe. `kobe_public` has `SELECT` on the public view.
+a correction is safe. The public `mod.injury_daily_forecast_vw` is applied from
+`nba/database/sql/views/mod/`; `kobe_public` has `SELECT` on it.
 
 ## Lean inference experiment
 
@@ -183,7 +184,7 @@ inference; the production job still needs an active-spell selection step.
 3. `01_build.py` — spells/features on the lean snapshot
 4. `19_daily_predict.py` — score the latest prediction date
 5. `15_publish_daily.py --append` — append that date to
-   `mod.injury_daily_forecast`
+   `mod.injury_daily_forecast_base`
 
 ```bash
 uv run --group data python __main__.py --season 2026-27

@@ -180,7 +180,7 @@ ordered keyword rules. After parsing, 1.2% of injury rows have an unknown
 body region and 2.7% an unknown ailment.
 
 **At source (2026-11-07):** `nba.injury_reason_map` holds the parsed form of
-every distinct reason and `nba.injuries_parsed` joins it to the report, so
+every distinct reason and `nba.injuries_parsed_vw` joins it to the report, so
 consumers can select structured columns without re-parsing. Refresh it with
 `uv run --group data python scripts/11_refresh_reason_map.py`; pass
 `--db-con postgres` for the local copy.

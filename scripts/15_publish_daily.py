@@ -1,4 +1,4 @@
-"""Publish the daily backfill to Cockroach `mod.injury_daily_forecast`.
+"""Publish the daily backfill to Cockroach `mod.injury_daily_forecast_base`.
 
 This is the one-off/repeatable writer for the results already on disk. It
 replaces the season's rows in a single transaction, so rerunning after a
@@ -20,7 +20,6 @@ import polars as pl
 import scs_hub
 from sqlalchemy import text
 
-PUBLIC_TABLE = "mod.injury_daily_forecast"
 TABLE = "mod.injury_daily_forecast_base"
 
 DDL = f"""
@@ -172,14 +171,11 @@ def main() -> None:
         conn.execute(text(DDL))
         conn.execute(text(f"DELETE FROM {TABLE} WHERE {where}"))
         out.write_database(TABLE, conn, if_table_exists="append")
-        conn.execute(text(f"CREATE OR REPLACE VIEW {PUBLIC_TABLE} AS SELECT * FROM {TABLE}"))
-        conn.execute(text(f"GRANT SELECT ON {PUBLIC_TABLE} TO kobe_public"))
-        conn.execute(text(f"REVOKE SELECT ON {TABLE} FROM kobe_public"))
 
-    count = hub.db.read(f"SELECT count(*) AS n FROM {PUBLIC_TABLE} WHERE {where}").item()
+    count = hub.db.read(f"SELECT count(*) AS n FROM {TABLE} WHERE {where}").item()
     suffix = f" on {replace_date}" if replace_date else ""
     print(
-        f"{args.db_con}: wrote {count:,} rows for {args.season}{suffix} to {PUBLIC_TABLE} "
+        f"{args.db_con}: wrote {count:,} rows for {args.season}{suffix} to {TABLE} "
         f"(model trained through {trained})"
     )
 
