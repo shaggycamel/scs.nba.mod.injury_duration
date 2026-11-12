@@ -1730,32 +1730,3 @@ prediction_date,spell_id,player_id,player_name,team_slug,start_date,games_missed
 2026-11-11,1642954_2026-27_11,1642954,Will Richard,GSW,2026-11-09,2.0,2.0,Questionable,elbow_arm,rupture_tear,2026-11-16,2,2.137969570969074,0.467,0.84,0.981,0.997,,2,false,true,false,dropped_from_report
 2026-11-11,1642949_2026-27_1,1642949,Yanic Konan Niederhäuser,LAC,2026-10-21,10.0,21.0,Out,unknown,surgery,2027-01-14,28,37.95841888633643,0.027,0.078,0.169,0.284,,10,false,true,false,dropped_from_report
 2026-11-11,1642274_2026-27_3,1642274,Yves Missi,NOP,2026-10-24,10.0,18.0,Out,knee,contusion,2026-11-30,10,17.43045626510978,0.065,0.235,0.398,0.589,,10,false,true,false,dropped_from_report
-2026-11-12,1642854_2026-27_10,1642854,Asa Newell,ATL,2026-11-06,3.0,6.0,Out,foot,dislocation,2027-01-05,22,37.2667084021053,0.035,0.096,0.168,0.307,,3,false,true,false,dropped_from_report
-2026-11-12,1641767_2026-27_2,1641767,Ben Sheppard,IND,2026-10-23,11.0,20.0,Out,knee_ligament,rupture_tear,2027-03-02,48,53.07418068995889,0.017,0.054,0.104,0.175,,11,false,true,false,dropped_from_report
-2026-11-12,1627732_2026-27_1,1627732,Ben Simmons,SAC,2026-10-21,11.0,22.0,Out,achilles,rupture_tear,2027-05-18,85,69.94337689618159,0.007,0.022,0.049,0.071,,11,false,true,false,dropped_from_report
-2026-11-12,203078_2026-27_1,203078,Bradley Beal,LAC,2026-10-21,10.0,22.0,Out,knee,illness,2026-12-20,15,25.71058164133181,0.042,0.156,0.255,0.423,,10,false,true,false,dropped_from_report
-2026-11-12,1627742_2026-27_1,1627742,Brandon Ingram,LAC,2026-10-21,10.0,22.0,Out,foot,surgery,2027-01-24,33,38.44348606615545,0.02,0.078,0.131,0.222,,10,false,true,false,dropped_from_report
-2026-11-12,1630314_2026-27_12,1630314,Brandon Williams,GSW,2026-11-11,1.0,1.0,Out,hamstring,strain,2026-11-29,8,11.2393051303461,0.103,0.309,0.425,0.637,,1,false,true,false,dropped_from_report
-2026-11-12,1642353_2026-27_10,1642353,Cam Christie,LAC,2026-11-10,1.0,2.0,Questionable,ankle,sprain,2026-11-17,3,3.991078771174091,0.216,0.679,0.882,0.964,,1,false,true,false,dropped_from_report
-2026-11-12,203991_2026-27_8,203991,Clint Capela,HOU,2026-11-02,5.0,10.0,Out,ankle,sprain,2026-12-01,10,17.5268285092564,0.073,0.261,0.427,0.563,,5,false,true,false,dropped_from_report
-2026-11-12,1627780_2026-27_11,1627780,Gary Payton II,GSW,2026-11-09,2.0,3.0,Out,knee,tendinopathy,2026-11-18,3,5.721634804906834,0.273,0.599,0.711,0.85,,2,false,true,false,dropped_from_report
-2026-11-12,203507_2026-27_11,203507,Giannis Antetokounmpo,MIA,2026-11-10,1.0,2.0,Probable,hand_wrist,sprain,2026-11-13,1,1.8613754510663818,0.528,0.967,0.993,1.0,,1,false,true,false,dropped_from_report
-2026-11-12,1643539_2026-27_1,1643539,Henri Veesaar,ATL,2026-10-21,12.0,22.0,Out,knee_ligament,rupture_tear,2027-06-24,100,74.61244843737411,0.007,0.024,0.043,0.083,,12,false,true,true,dropped_from_report
-2026-11-12,1642281_2026-27_6,1642281,Jaylon Tyson,CLE,2026-10-31,7.0,12.0,Questionable,ankle,sprain,2026-11-13,1,1.8967082580240555,0.525,0.949,0.994,1.0,,7,false,true,false,dropped_from_report
-2026-11-12,202710_2026-27_1,202710,Jimmy Butler III,GSW,2026-10-21,12.0,22.0,Out,knee_ligament,surgery,2027-01-28,34,38.78383608999561,0.016,0.058,0.087,0.153,,12,false,true,false,dropped_from_report
-2026-11-12,1642277_2026-27_1,1642277,Johnny Furphy,IND,2026-10-21,12.0,22.0,Out,knee_ligament,surgery,2027-03-16,55,57.597288802125,0.01,0.031,0.063,0.111,,12,false,true,false,dropped_from_report
-2026-11-12,1641757_2026-27_1,1641757,Jordan Miller,LAC,2026-10-21,10.0,22.0,Out,shoulder,surgery,2027-01-18,30,40.67823966808105,0.025,0.096,0.161,0.257,,10,false,true,false,dropped_from_report
-2026-11-12,1642933_2026-27_10,1642933,Keshon Gilbert,ATL,2026-11-06,3.0,6.0,Out,knee,tendinopathy,2026-12-26,16,24.810448530141798,0.057,0.145,0.24,0.391,,3,false,true,false,dropped_from_report
-2026-11-12,1642875_2026-27_1,1642875,Maxime Raynaud,SAC,2026-10-21,11.0,22.0,Out,knee_ligament,dislocation,2027-02-07,39,47.28413823651318,0.024,0.074,0.161,0.232,,11,false,true,false,dropped_from_report
-2026-11-12,1630541_2026-27_1,1630541,Moses Moody,GSW,2026-10-21,12.0,22.0,Out,knee_ligament,surgery,2027-05-20,85,68.23128524638622,0.01,0.036,0.054,0.094,,12,false,true,false,dropped_from_report
-2026-11-12,1631243_2026-27_1,1631243,Mouhamed Gueye,ATL,2026-10-21,12.0,22.0,Out,foot,fracture,2027-02-07,38,45.76296829708417,0.02,0.063,0.111,0.209,,12,false,true,false,dropped_from_report
-2026-11-12,1641772_2026-27_1,1641772,Nae'Qwan Tomlin,CLE,2026-10-22,12.0,21.0,Out,back_core,fracture,2027-01-13,27,38.24583549057866,0.033,0.125,0.201,0.301,,12,false,true,false,dropped_from_report
-2026-11-12,1630241_2026-27_10,1630241,Sam Merrill,CLE,2026-11-07,3.0,5.0,Out,elbow_arm,illness,2026-11-14,2,3.5334931679197137,0.412,0.757,0.875,0.954,,3,false,true,false,dropped_from_report
-2026-11-12,203500_2026-27_3,203500,Steven Adams,HOU,2026-10-24,10.0,19.0,Out,ankle,illness,2026-11-30,9,16.997049651172006,0.08,0.283,0.433,0.566,,10,false,true,false,dropped_from_report
-2026-11-12,204456_2026-27_12,204456,T.J. McConnell,IND,2026-11-11,1.0,1.0,Questionable,hamstring,strain,2026-11-15,2,2.880622477922153,0.332,0.721,0.929,0.988,,1,false,true,false,dropped_from_report
-2026-11-12,1630570_2026-27_11,1630570,Trendon Watford,NOP,2026-11-09,2.0,3.0,Out,ankle,sprain,2026-11-21,6,9.838606165164181,0.133,0.392,0.566,0.747,,2,false,true,false,dropped_from_report
-2026-11-12,1630530_2026-27_11,1630530,Trey Murphy III,NOP,2026-11-09,2.0,3.0,Probable,knee_ligament,tendinopathy,2026-11-14,2,2.114673003079202,0.479,0.922,0.987,0.998,,2,false,true,false,dropped_from_report
-2026-11-12,1630169_2026-27_5,1630169,Tyrese Haliburton,IND,2026-10-28,8.0,15.0,Out,hamstring,illness,2026-11-23,6,11.595991352245928,0.089,0.284,0.503,0.709,,8,false,true,false,dropped_from_report
-2026-11-12,1642954_2026-27_11,1642954,Will Richard,GSW,2026-11-09,2.0,3.0,Questionable,elbow_arm,rupture_tear,2026-11-16,2,2.137969570969074,0.467,0.924,0.981,0.999,,2,false,true,false,dropped_from_report
-2026-11-12,1642949_2026-27_1,1642949,Yanic Konan Niederhäuser,LAC,2026-10-21,10.0,22.0,Out,unknown,surgery,2027-01-14,28,37.95841888633643,0.027,0.102,0.169,0.284,,10,false,true,false,dropped_from_report
-2026-11-12,1642274_2026-27_3,1642274,Yves Missi,NOP,2026-10-24,10.0,19.0,Out,knee,contusion,2026-11-30,10,17.43045626510978,0.065,0.235,0.398,0.589,,10,false,true,false,dropped_from_report

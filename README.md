@@ -138,10 +138,10 @@ player-day with `prediction_date`, predicted return date and remaining games,
 P(return next game / within 7 / 14 / 30 days), and the actual return fields for
 evaluation. A report row is used only once its game date has arrived; the next
 game's report cannot leak into an earlier prediction. Predictions stop the day
-before a return or censor event, and season-end censoring runs to the data
-cutoff. Players with no NBA history are flagged `history_imputed`; their
-attribute and workload nulls are filled with training medians so a two-way
-debut does not produce a 90-game forecast.
+before a return or censor event, and never run past the latest observed report
+date; season-end censoring runs to that cutoff. Players with no NBA history are
+flagged `history_imputed`; their attribute and workload nulls are filled with
+training medians so a two-way debut does not produce a 90-game forecast.
 
 ## Published table
 
@@ -153,8 +153,15 @@ uv run --group data python scripts/15_publish_daily.py
 ```
 
 The publisher replaces the season's rows in one transaction, so rerunning after
-a correction is safe. The public `mod.injury_daily_forecast_vw` is applied from
-`nba/database/sql/views/mod/`; `kobe_public` has `SELECT` on it.
+a correction is safe. `kobe_public` has `SELECT` on the public view
+`mod.injury_daily_forecast_vw`. The view is a live join over the published base
+table: for any spell whose outcome was not known when its row was written, it
+fills `actual_return_date`, `actual_games_missed`, `return_seen` and `censored`
+from the box score and roster once the player returns. A still-active spell
+stays null and censored until its return game is played. The view is defined and
+applied by the database repo, `scs.nba.database`, in
+`sql/views/mod/injury_daily_forecast_vw.sql`; this publisher only writes the
+base table and refuses to run if the view has not been applied.
 
 ## Lean inference experiment
 

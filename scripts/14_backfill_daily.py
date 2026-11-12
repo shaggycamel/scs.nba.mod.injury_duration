@@ -17,7 +17,7 @@ from pathlib import Path
 
 import polars as pl
 
-from injury_duration import daily, persist
+from injury_duration import daily, paths, persist
 from injury_duration import experiment as ex
 
 
@@ -67,8 +67,12 @@ def main() -> None:
         raise SystemExit(f"no spells for {args.season!r} in the current build")
 
     # The build can contain future games through the roster stints; the
-    # observation cutoff is the last report/box event for this season.
-    cutoff = spells["last_missed_date"].max()
+    # observation cutoff is the last date with an actual box score or report,
+    # not the last scheduled game and not the last spell's date.
+    panel = pl.read_parquet(paths.BUILD / "panel.parquet")
+    cutoff = daily.observation_cutoff(panel, args.season)
+    if cutoff is None:
+        cutoff = spells["last_missed_date"].max()
     if cutoff is None:
         raise SystemExit(f"no observed dates for {args.season!r}")
     out_chunks: list[pl.DataFrame] = []
@@ -86,6 +90,12 @@ def main() -> None:
     if not out_chunks:
         raise SystemExit(f"no daily states for {args.season!r}")
     out = pl.concat(out_chunks, how="vertical_relaxed")
+    latest = out["prediction_date"].max()
+    if latest is not None and latest > cutoff:
+        raise SystemExit(
+            f"backfill produced prediction dates through {latest}, past the observed "
+            f"cutoff {cutoff}; refusing to write future rows"
+        )
     out = out.with_columns(
         pl.when(pl.col("event") == 1)
         .then(pl.col("next_date"))

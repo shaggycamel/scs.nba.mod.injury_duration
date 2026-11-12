@@ -4,6 +4,10 @@ This is the one-off/repeatable writer for the results already on disk. It
 replaces the season's rows in a single transaction, so rerunning after a
 correction is safe.
 
+The public view is owned by scs.nba.database
+(`sql/views/mod/injury_daily_forecast_vw.sql`). This script only writes the base
+table and refuses to run if the view has not been applied.
+
 Usage:
     uv run --group data python scripts/15_publish_daily.py
     uv run --group data python scripts/15_publish_daily.py --season 2026-27
@@ -20,6 +24,7 @@ import polars as pl
 import scs_hub
 from sqlalchemy import text
 
+PUBLIC_TABLE = "mod.injury_daily_forecast_vw"
 TABLE = "mod.injury_daily_forecast_base"
 
 DDL = f"""
@@ -56,6 +61,10 @@ CREATE TABLE IF NOT EXISTS {TABLE} (
   PRIMARY KEY (prediction_date, spell_id)
 )
 """
+
+# The public view is defined and applied in scs.nba.database:
+# sql/views/mod/injury_daily_forecast_vw.sql. This script only writes the base
+# table; apply that repo's views when the definition changes.
 
 COLUMNS = [
     "prediction_date",
@@ -118,6 +127,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _require_view(hub: scs_hub.SportsHub) -> None:
+    """Fail loudly if the public view has not been applied from the DB repo."""
+    exists = hub.db.read(
+        "SELECT 1 FROM information_schema.views "
+        "WHERE table_schema = 'mod' AND table_name = 'injury_daily_forecast_vw'"
+    )
+    if exists.is_empty():
+        raise SystemExit(
+            "mod.injury_daily_forecast_vw is missing; apply "
+            "sql/views/mod/injury_daily_forecast_vw.sql from scs.nba.database"
+        )
+
+
 def main() -> None:
     args = parse_args()
     raw = pl.read_parquet(args.input)
@@ -159,6 +181,20 @@ def main() -> None:
     ).select(COLUMNS)
 
     hub = scs_hub.SportsHub(db_con=args.db_con)
+    _require_view(hub)
+    latest_report = hub.db.read(
+        f"SELECT max(game_date) AS d FROM nba.injuries_vw WHERE season = '{args.season}'"
+    ).item()
+    latest_prediction = out["prediction_date"].max()
+    if (
+        latest_report is not None
+        and latest_prediction is not None
+        and latest_prediction > latest_report
+    ):
+        raise SystemExit(
+            f"refusing to publish prediction_date {latest_prediction}, later than the "
+            f"latest injury report {latest_report}"
+        )
     if args.append:
         replace_date = args.prediction_date or out["prediction_date"].max()
         out = out.filter(pl.col("prediction_date") == replace_date)
@@ -171,12 +207,17 @@ def main() -> None:
         conn.execute(text(DDL))
         conn.execute(text(f"DELETE FROM {TABLE} WHERE {where}"))
         out.write_database(TABLE, conn, if_table_exists="append")
+        # The DB repo grants read on the data schemas; keep the internal base
+        # table private so only the public view is exposed.
+        conn.execute(text(f"REVOKE SELECT ON {TABLE} FROM kobe_public"))
 
-    count = hub.db.read(f"SELECT count(*) AS n FROM {TABLE} WHERE {where}").item()
+    count = hub.db.read(
+        f"SELECT count(*) AS n FROM {PUBLIC_TABLE} WHERE {where}"
+    ).item()
     suffix = f" on {replace_date}" if replace_date else ""
     print(
-        f"{args.db_con}: wrote {count:,} rows for {args.season}{suffix} to {TABLE} "
-        f"(model trained through {trained})"
+        f"{args.db_con}: wrote {count:,} rows for {args.season}{suffix} to "
+        f"{PUBLIC_TABLE} (model trained through {trained})"
     )
 
 

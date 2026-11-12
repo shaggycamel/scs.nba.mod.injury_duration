@@ -29,6 +29,21 @@ def _date_from_days(expr: pl.Expr) -> pl.Expr:
     return pl.lit(EPOCH) + pl.duration(days=expr.round().cast(pl.Int64))
 
 
+def observation_cutoff(panel: pl.DataFrame, season: str) -> date | None:
+    """Last date the season has a box score or an injury report.
+
+    The panel extends through roster stints to the end of the schedule, so its
+    maximum game date can be in the future. A row is observed only when the
+    player played or the report named them; `unlisted_absent` rows after the
+    last report are schedule scaffolding, not data.
+    """
+    return (
+        panel.filter(
+            (pl.col("season") == season) & (pl.col("state") != "unlisted_absent")
+        )["game_date"].max()
+    )
+
+
 def build_daily_states(
     spells: pl.DataFrame,
     features: pl.DataFrame,
@@ -41,6 +56,11 @@ def build_daily_states(
     `through` forces predictions to the data cutoff even when a spell has a
     non-null next_date. The daily job uses it for active spells; the historical
     backfill leaves it unset and stops the day before the return/censor event.
+
+    No prediction date may pass `cutoff`: a later date has no observed report
+    state and is a future forecast, not an as-of row. That matters when the
+    next scheduled game is after the cutoff, because the day-before boundary
+    would otherwise run into the future.
     """
     design = ex.hazard_design(rows, features).filter(
         pl.col("spell_id").is_in(spells["spell_id"].to_list())
@@ -65,11 +85,15 @@ def build_daily_states(
         # a G League assignment, a trade or a dropped report. Predictions stop
         # the day before it. Only a season-end censor has no next date, and
         # those predictions continue to the data cutoff.
-        if through is not None:
-            end = through
-        else:
-            end = r["next_date"] - timedelta(days=1) if r["next_date"] else cutoff
+        limit = through if through is not None else cutoff
+        end = limit
+        if through is None and r["next_date"] is not None:
+            end = r["next_date"] - timedelta(days=1)
         end = max(end, r["last_missed_date"])
+        # Never predict past the observation limit. For a spell whose next
+        # game is after the cutoff, the day-before boundary above points into
+        # the future; without this clamp the backfill emits those dates.
+        end = min(end, limit)
         if end < r["start_date"]:
             continue
         d = r["start_date"]
@@ -106,6 +130,9 @@ def build_daily_states(
         right_on="game_date",
         by="spell_id",
         strategy="backward",
+        # Both sides are sorted explicitly above. Polars cannot verify
+        # sortedness across `by` groups and warns on every run otherwise.
+        check_sortedness=False,
     )
     states = states.filter(pl.col("game_date").is_not_null()).with_columns(
         (pl.col("prediction_date") - pl.col("start_date"))
